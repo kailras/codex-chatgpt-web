@@ -13,8 +13,7 @@ const languageTypes = read("launcher", "src", "types.ts");
 const electronMain = read("launcher", "electron", "main.cjs");
 const stateSource = read("launcher", "electron", "state.cjs");
 const englishReadme = read("README.md");
-const chineseReadme = read("README.zh-CN.md");
-const japaneseReadme = read("README.ja.md");
+const koreanReadme = read("README.ko.md");
 
 function commandFences(source) {
   return [...source.matchAll(/```(bash|powershell)\n([\s\S]*?)```/g)]
@@ -60,10 +59,10 @@ test("catalog refresh guidance distinguishes a full Codex restart from account l
 });
 
 test("localized READMEs preserve every command block and link target from English", () => {
-  for (const source of [chineseReadme, japaneseReadme]) {
+  for (const source of [koreanReadme]) {
     assert.deepEqual(commandFences(source), commandFences(englishReadme));
     assert.deepEqual(linkTargets(source), linkTargets(englishReadme));
   }
-  assert.match(japaneseReadme, /Codex タスク ──Responses \+ SSE──▶/);
-  assert.match(japaneseReadme, /ネイティブ UI、コンテキスト、画像、トレース、ツールライフサイクル/);
+  assert.match(koreanReadme, /Codex 작업 ──Responses \+ SSE──▶/);
+  assert.match(koreanReadme, /네이티브 UI, 컨텍스트, 이미지, 추적 및 도구 라이프사이클/);
 });
