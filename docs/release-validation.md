@@ -44,6 +44,18 @@ Full-mode MCP tools, Pro turns, compaction, cancellation, session reuse, and pre
 configuration were exercised successfully. The direct installer completed successfully but gave no
 clear completion action; v3.0.0 changes it to an assisted installer with a final launch option.
 
+### v4.0.8 security hardening notes
+
+This patch adds loopback `Host`/`Origin` validation to every daemon route, including `/healthz`, to
+reject DNS-rebinding and cross-origin requests. Tunnel-client v0.0.12 downloads now require a
+source-pinned SHA-256 match for all six supported platform archives before the existing upstream
+`SHA256SUMS.txt` comparison. Security guidance recommends Browser-only mode for untrusted
+repositories, pull requests, and dependency changes; CDP remains random-port and loopback-only.
+
+The automated repository verification gate passed. The separate cross-network archive re-download
+check and account-bound release-validation flows below remain release-operator gates and are not
+claimed by this document.
+
 ## macOS gate
 
 Repeat items 2 through 10 on the oldest supported macOS version or the closest maintained machine.

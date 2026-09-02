@@ -22,6 +22,14 @@ test("the full verification gate audits launcher dependencies", () => {
   assert.match(verify, /await run\(\["run", "launcher:audit"\]\);/);
 });
 
+test("launcher browser CDP stays loopback-only and rejects widened origin flags", () => {
+  const main = fs.readFileSync(path.join(launcherRoot, "electron", "main.cjs"), "utf8");
+  const browserHost = fs.readFileSync(path.join(repositoryRoot, "src", "launcher-browser-host.ts"), "utf8");
+  assert.match(main, /appendSwitch\("remote-debugging-address",\s*"127\.0\.0\.1"\)/);
+  assert.doesNotMatch(main, /remote-allow-origins/);
+  assert.match(browserHost, new RegExp('webSocketDebuggerUrl.*startsWith\\("ws://127\\.0\\.0\\.1:"\\)'));
+});
+
 test("launcher publishes native packages for all supported desktop operating systems", () => {
   assert.equal(manifest.build.appId, "dev.codexwebgpt.launcher");
   assert.equal(manifest.build.artifactName, "codex-web-gpt-${version}-${os}-${arch}.${ext}");

@@ -1,5 +1,15 @@
+import { createHash } from "node:crypto";
 import { describe, expect, test } from "bun:test";
-import { TUNNEL_VERSION, parseTunnelStatus, tunnelClientInstallAction, tunnelCommandOutput, tunnelConnectLaunchError } from "../src/tunnel";
+import {
+  PINNED_ARCHIVE_SHA256,
+  TUNNEL_VERSION,
+  assertPinnedArchive,
+  parseTunnelStatus,
+  platformAsset,
+  tunnelClientInstallAction,
+  tunnelCommandOutput,
+  tunnelConnectLaunchError,
+} from "../src/tunnel";
 
 test("pins the fixed tunnel-client and migrates only the previously shipped version", () => {
   expect(TUNNEL_VERSION).toBe("0.0.12");
@@ -7,6 +17,31 @@ test("pins the fixed tunnel-client and migrates only the previously shipped vers
   expect(tunnelClientInstallAction("0.0.10")).toBe("upgrade");
   expect(() => tunnelClientInstallAction("0.0.11")).toThrow("not a trusted upgrade source");
   expect(() => tunnelClientInstallAction("9.9.9")).toThrow("not a trusted upgrade source");
+});
+
+test("pins every supported tunnel-client platform archive", () => {
+  const supported = [
+    ["darwin", "x64", "tunnel-client-v0.0.12-darwin-amd64.zip"],
+    ["darwin", "arm64", "tunnel-client-v0.0.12-darwin-arm64.zip"],
+    ["linux", "x64", "tunnel-client-v0.0.12-linux-amd64.zip"],
+    ["linux", "arm64", "tunnel-client-v0.0.12-linux-arm64.zip"],
+    ["win32", "x64", "tunnel-client-v0.0.12-windows-amd64.zip"],
+    ["win32", "arm64", "tunnel-client-v0.0.12-windows-arm64.zip"],
+  ] as const;
+  for (const [platform, arch, asset] of supported) {
+    expect(platformAsset(platform, arch)).toBe(asset);
+    expect(PINNED_ARCHIVE_SHA256[asset]).toMatch(/^[a-f0-9]{64}$/);
+  }
+});
+
+test("assertPinnedArchive accepts only the pinned archive bytes", () => {
+  const asset = "synthetic-archive.zip";
+  const bytes = new TextEncoder().encode("archive bytes");
+  const checksum = createHash("sha256").update(bytes).digest("hex");
+  expect(assertPinnedArchive(asset, bytes, { [asset]: checksum })).toBe(checksum);
+  expect(() => assertPinnedArchive(asset, new TextEncoder().encode("tampered"), { [asset]: checksum }))
+    .toThrow("Checksum mismatch (pinned)");
+  expect(() => assertPinnedArchive("missing-archive.zip", bytes, {})).toThrow("No pinned checksum");
 });
 
 describe("tunnel status boundary", () => {

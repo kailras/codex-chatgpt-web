@@ -87,6 +87,27 @@ const reportHttpStreamFailure: HttpStreamFailureReporter = evidence => {
   console.warn(`[codex-chatgpt-web] http_stream_failed ${JSON.stringify(evidence)}`);
 };
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost"]);
+
+function isLoopbackRequest(url: URL, req: Request, boundPort: number): boolean {
+  if (!LOOPBACK_HOSTS.has(url.hostname)) return false;
+  const requestPort = url.port === "" ? 80 : Number(url.port);
+  if (!Number.isInteger(requestPort) || requestPort !== boundPort) return false;
+  const origin = req.headers.get("origin");
+  if (origin === null) return true;
+  try {
+    const parsed = new URL(origin);
+    const originPort = parsed.port === "" ? 80 : Number(parsed.port);
+    return parsed.protocol === "http:"
+      && LOOPBACK_HOSTS.has(parsed.hostname)
+      && parsed.hostname === url.hostname
+      && Number.isInteger(originPort)
+      && originPort === boundPort;
+  } catch {
+    return false;
+  }
+}
+
 function emitHttpStreamFailure(
   reporter: HttpStreamFailureReporter,
   evidence: HttpStreamFailureEvidence,
@@ -665,6 +686,13 @@ export function startServer(
     idleTimeout: 0,
     async fetch(req) {
       const url = new URL(req.url);
+      const boundPort = server.port;
+      if (boundPort === undefined || !isLoopbackRequest(url, req, boundPort)) {
+        console.warn(
+          `[codex-chatgpt-web] rejected request with invalid Host or Origin: ${JSON.stringify(req.headers.get("host") ?? "")}`,
+        );
+        return formatErrorResponse(403, "invalid_request_error", "Request Host or Origin is not allowed");
+      }
       if (req.method === "GET" && url.pathname === "/healthz") {
         return Response.json({
           status: "ok",

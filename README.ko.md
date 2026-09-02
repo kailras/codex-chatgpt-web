@@ -110,6 +110,8 @@ Full 모드는 공식 [OpenAI tunnel-client](https://github.com/openai/tunnel-cl
 
 쓰기/수정 작업은 ChatGPT 워크스페이스 및 관리자 정책에서도 허용되어야 합니다. [개발자 모드 및 MCP 앱](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt)을 참고하세요. 예상치 못한 승인 프롬프트는 `--auto-approve-tool-calls`가 명시적으로 활성화되지 않는 한 fail-closed(차단)됩니다. 해당 옵션은 영구적인 권한 부여가 아니라 **Allow once**만을 클릭합니다.
 
+신뢰할 수 없는 저장소, PR 또는 의존성 변경을 작업할 때는 Browser-only 모드를 권장하며, Full 모드는 신뢰할 수 있는 워크스페이스로 한정하고 그 안에서도 `--auto-approve-tool-calls`는 사용하지 않는 것이 좋습니다.
+
 ## 운영
 
 안전한 로컬 진단에는 **Activity**를 사용하고, 엔드투엔드 상태 확인에는 **Settings → Run doctor**를 사용하세요. Settings에서는 보존된 브라우저 턴을 취소하거나 제거 전에 Codex 연동을 삭제할 수도 있습니다. 모든 브라우저 체크포인트에서 스크린샷이 필요한 경우에만 `CODEX_CHATGPT_WEB_BROWSER_DIAGNOSTICS=1`을 설정하세요.

@@ -34,14 +34,17 @@ prevents a cached legacy schema from being mistaken for the current capability c
 ChatGPT sees repository content and tool results that may contain hostile instructions. Full mode
 can invoke write and command tools. Use a trusted workspace, keep Codex sandbox/approval settings
 appropriate, and grant only intended connector actions. Automatic per-call approval is off by
-default.
+default. For untrusted repositories, pull requests, or dependency changes, prefer Browser-only mode;
+reserve Full mode for trusted workspaces and do not enable `--auto-approve-tool-calls` even there
+unless its risk is explicitly accepted.
 
 ### Browser session theft
 
 The launcher's persistent Electron partition can authorize ChatGPT access. It remains in the
 current OS user's private application-data directory and is never copied into a daemon prompt or
 runtime descriptor. Never sync, upload, attach, or commit it. On suspected exposure, sign out or
-revoke the ChatGPT session from the launcher.
+revoke the ChatGPT session from the launcher. The CDP port is random and loopback-only, and its
+launcher descriptor is written with user-only permissions.
 
 ### Tunnel credential theft
 
@@ -95,6 +98,8 @@ assistant prose as a structured handoff.
 ## Network exposure
 
 - Responses and health listeners bind to `127.0.0.1` only.
+- Every route, including `/healthz`, validates the loopback `Host` and any `Origin` header to reject
+  DNS rebinding and cross-origin browser requests.
 - Full mode uses OpenAI's outbound HTTPS Secure MCP Tunnel; it opens no public listener or inbound
   firewall rule.
 - The embedded browser connects to ChatGPT, the selected identity provider during explicit sign-in,

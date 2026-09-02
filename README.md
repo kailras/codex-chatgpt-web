@@ -157,6 +157,9 @@ them. See
 Unexpected approval prompts fail closed unless `--auto-approve-tool-calls` is explicitly enabled;
 that option clicks **Allow once**, never a permanent grant.
 
+For untrusted repositories, pull requests, or dependency changes, prefer Browser-only mode; reserve
+Full mode for trusted workspaces and avoid `--auto-approve-tool-calls` even there.
+
 ## Operations
 
 Use **Activity** for safe local diagnostics and **Settings → Run doctor** for end-to-end health.
