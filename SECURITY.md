@@ -1,22 +1,11 @@
-# Security policy
+# 보안 정책
 
-Do not open public issues containing ChatGPT cookies, browser storage, tunnel IDs, API keys,
-Codex prompts, tool results, or local filesystem paths. Redact diagnostic bundles before sharing.
+ChatGPT 쿠키, 브라우저 스토리지, 터널 ID, API 키, Codex 프롬프트, 도구 결과 또는 로컬 파일 시스템 경로가 포함된 공개 이슈를 생성하지 마세요. 공유하기 전에 진단 번들을 비식별화하세요.
 
-The daemon binds only to loopback. If another local user can access your account or application
-home, treat the browser session and tunnel key as compromised and rotate them.
+데몬은 루프백에만 바인딩됩니다. 다른 로컬 사용자가 계정이나 애플리케이션 홈에 접근할 수 있는 경우, 브라우저 세션과 터널 키가 노출된 것으로 간주하고 교체하세요.
 
-Read the complete [security model](docs/security-model.md) before enabling full mode. In particular,
-full mode lets an untrusted model response request tools from the current Codex turn; keep connector
-action control, Codex sandboxing, and approvals aligned with the workspace's risk. For untrusted
-repositories, pull requests, or dependency changes, prefer Browser-only mode and reserve Full mode
-for trusted workspaces.
+Full 모드를 활성화하기 전에 전체 [보안 모델](docs/security-model.md)을 읽어보세요. 특히 Full 모드는 신뢰할 수 없는 모델 응답이 현재 Codex 턴에서 도구를 요청할 수 있도록 허용합니다. 워크스페이스의 위험 수준에 맞게 커넥터 작업 제어, Codex 샌드박싱 및 승인을 구성하세요. 신뢰할 수 없는 저장소, 풀 리퀘스트 또는 의존성 변경의 경우 Browser-only 모드를 권장하며, Full 모드는 신뢰할 수 있는 워크스페이스로 한정하세요.
 
-The stable MCP v1 SDK currently declares the vulnerable `@hono/node-server` 1.x range even though
-this project uses only its stdio transport. The lockfile explicitly resolves that unused HTTP
-adapter to patched 2.0.12. `bun audit`, the MCP protocol test, and the compiled-binary smoke test are
-release gates; remove the override when the stable SDK itself moves to the patched major.
+안정적인 MCP v1 SDK는 현재 이 프로젝트가 stdio 전송만 사용함에도 취약한 `@hono/node-server` 1.x 범위를 선언하고 있습니다. 락파일은 사용되지 않는 이 HTTP 어댑터를 패치된 2.0.12로 명시적으로 확인합니다. `bun audit`, MCP 프로토콜 테스트 및 컴파일된 바이너리 스모크 테스트는 릴리스 게이트입니다. 안정적인 SDK 자체가 패치된 메이저 버전으로 전환되면 재정의를 제거하세요.
 
-Once the GitHub repository is public, use its private Security Advisory reporting flow. Until that
-is enabled, do not publish a proof of concept that exposes credentials or arbitrary local tool
-execution; contact the maintainer privately through the GitHub account listed by the repository.
+GitHub 저장소가 공개되면 비공개 보안 권고(Security Advisory) 보고 절차를 사용하세요. 활성화되기 전에는 자격 증명이나 임의의 로컬 도구 실행을 노출하는 개념 증명(PoC)을 공개하지 말고, 저장소에 나열된 GitHub 계정을 통해 유지관리자에게 비공개로 문의하세요.

@@ -1,245 +1,151 @@
-# Troubleshooting
+# 문제 해결
 
-This guide covers the failures reported most often in GitHub issues. Start here before reinstalling,
-editing Codex configuration, or opening a new issue.
+이 가이드는 GitHub 이슈에서 가장 자주 보고되는 문제를 다룹니다. 재설치하거나, Codex 설정을 직접 편집하거나, 새 이슈를 등록하기 전에 여기를 먼저 확인하세요.
 
-## The first five minutes
+## 모델이 나타나지 않거나 설정이 3단계에 머무는 경우
 
-1. Install the [latest release](https://github.com/miuuyy/codex-chatgpt-web/releases/latest). Quit
-   **Codex Web GPT** before running the installer again; updating preserves its private ChatGPT
-   profile and launcher configuration.
-2. In the launcher, confirm that ChatGPT sign-in, the browser smoke test, and **Install models** (or
-   **Repair Codex setup**) are green.
-3. Fully quit Codex, including its background process, and reopen it. Signing out, closing only the
-   window, or starting another task does not reload the model catalog. Keep the launcher open.
-4. Select a **ChatGPT Web — …** model from Codex's model picker.
-5. Run **Settings → Run doctor**. If the problem remains, reproduce it once and immediately use
-   **Activity → Export safe log**.
+**Install models**는 Codex 경로를 업데이트하지만, 이미 실행 중인 Codex 프로세스는 이전 모델 카탈로그를 계속 유지합니다. 모든 Codex Desktop 창과 Codex CLI 프로세스를 완전히 종료한 다음, 런처가 실행 중인 상태에서 Codex를 다시 여세요. 런처가 **Restart Codex**에서 확인된 카탈로그 상태로 전환되어야 합니다.
 
-Do not repeatedly press setup actions after they report success. The exact error and a fresh safe
-log are more useful than another reinstall.
+여전히 모델이 나타나지 않는 경우:
 
-## Models do not appear, or setup remains on step 3
+- **Repair Codex setup**을 한 번 실행합니다.
+- **Settings → Run doctor**를 확인합니다.
+- 다른 Codex 래퍼가 경로를 덮어쓰고 있지 않은지 확인합니다.
+- 카탈로그 확인 실패 후 안전한 로그를 내보냅니다.
 
-**Install models** updates the Codex route, but a running Codex process keeps its old model catalog.
-Fully quit every Codex Desktop window and Codex CLI process, then reopen Codex while the launcher is
-still running. The launcher should move from **Restart Codex** to a verified catalog state.
+3단계가 녹색으로 완료된 후 브라우저 턴 오류가 발생한다면 설치 자체는 성공한 것입니다. 3단계를 반복해도 관련 없는 ChatGPT 브라우저나 모델 턴 오류는 해결되지 않습니다.
 
-If the models still do not appear:
+## `openai_base_url changed after setup` 또는 모델이 "not supported"라고 표시되는 경우
 
-- run **Repair Codex setup** once;
-- check **Settings → Run doctor**;
-- make sure another Codex wrapper is not replacing the route; and
-- export a safe log after the failed catalog check.
+런처는 다른 도구에 의해 변경된 경로를 의도적으로 덮어쓰지 않습니다. 한 번에 하나의 프로그램만 Codex의 `openai_base_url`을 소유할 수 있습니다. OpenCodex, Headroom, OmniRoute, Codex++, CC Switch와 같은 래퍼나 라우터, 또는 수동으로 설정된 프로바이더가 전체 설치 환경 또는 해당 도구가 실행하는 프로세스에 대해 Codex Web GPT 경로를 대체할 수 있습니다.
 
-A green step 3 followed by a browser-turn error means installation succeeded. Repeating step 3 will
-not repair an unrelated ChatGPT browser or model-turn failure.
+하나의 경로 소유자만 선택하세요:
 
-## `openai_base_url changed after setup` or a model is "not supported"
+- Codex Web GPT를 사용하려면 다른 래퍼의 프로바이더/프록시 모드를 비활성화하고, **Repair Codex setup**을 실행한 뒤, Codex를 완전히 다시 시작하고, 래퍼 명령이 아닌 Codex를 직접 실행하세요.
+- 다른 도구가 `openai_base_url`을 대체하지 않는다면 MCP 통합으로만 활성화해 둘 수 있습니다.
+- 깔끔하게 다른 도구로 전환하려면 먼저 **Settings → Remove Codex integration**을 사용하세요. 이렇게 하면 Codex Web GPT 설치 전의 정확한 경로가 복원됩니다.
 
-The launcher deliberately refuses to overwrite a route changed by another tool. Only one program
-can own Codex's `openai_base_url` at a time. Wrappers and routers such as OpenCodex, Headroom,
-OmniRoute, Codex++, CC Switch, or a manually configured provider may replace the Codex Web GPT route
-for the whole installation or only for the process they launch.
+런처의 경로 저널을 수동으로 편집하지 마세요. 이는 설정 및 제거 작업 시 다른 프로바이더의 구성을 무단으로 파괴하지 않고 안전하게 실패(fail closed)하도록 하기 위해 존재합니다. 1급 외부 라우터 구성은 [#205](https://github.com/miuuyy/codex-chatgpt-web/issues/205)에서 추적 중이지만, 현재는 지원되지 않습니다.
 
-Choose one route owner:
+## ChatGPT 로그인이 완료되지 않는 경우
 
-- To use Codex Web GPT, disable the other wrapper's provider/proxy mode, run **Repair Codex setup**,
-  fully restart Codex, and start Codex directly rather than through the wrapper command.
-- A tool may remain enabled only as an MCP integration if it does not replace `openai_base_url`.
-- To switch away cleanly, use **Settings → Remove Codex integration** first. This restores the exact
-  route that existed before Codex Web GPT was installed.
+런처는 모델 턴에 사용되는 ChatGPT 세션을 직접 소유해야 합니다. 관련 없는 일반 브라우저 창에서 로그인해도 해당 세션이 자동으로 이전되지 않습니다.
 
-Do not hand-edit the launcher's route journal. It exists so setup and removal can fail closed instead
-of silently destroying another provider's configuration. First-class external-router composition is
-tracked in [#205](https://github.com/miuuyy/codex-chatgpt-web/issues/205), but is not supported today.
+- 런처가 소유한 로그인 흐름 내에서 일반 로그인을 완료하고 Temporary Chat(임시 채팅) 입력창이 보일 때까지 기다리세요.
+- 인증 또는 세션 확인이 진행되는 동안 런처 브라우저를 탐색하거나 닫지 마세요.
+- 계정에 **Try another way**(다른 방법 시도)가 제공된다면 다른 인증 방법을 사용하여 플랫폼 패스키 제한을 우회할 수 있습니다.
+- 패스키 전용 macOS 계정에는 알려진 미해결 이슈가 있습니다: [#209](https://github.com/miuuyy/codex-chatgpt-web/issues/209). 다른 인증 방법이 없다면 브라우저 프로필을 반복해서 삭제하지 말고 해당 이슈를 확인하세요. 아직 안전한 범용 해결책은 없습니다.
 
-## ChatGPT sign-in does not complete
+일반 로그인이 여전히 실패하면 한 번 시도한 직후 안전한 로그를 내보내세요. OS, 런처 버전, 계정 등급, 로그인 제공업체, Temporary Chat 입력창 표시 여부를 함께 기재하세요. 쿠키, 브라우저 스토리지, 인증 헤더, 원본 프로필 파일은 절대로 업로드하지 마세요.
 
-The launcher must own the ChatGPT session used for model turns. Signing in to an unrelated browser
-window does not automatically transfer that session.
+## 브라우저 스모크 테스트가 실패하는 경우
 
-- Complete ordinary sign-in inside the launcher-owned flow and wait until a Temporary Chat composer
-  is visible.
-- Do not navigate or close the launcher browser while authentication or session verification is
-  running.
-- If the account offers **Try another way**, an alternate authentication method can avoid a
-  platform-passkey limitation.
-- Passkey-only macOS accounts have a known open issue: [#209](https://github.com/miuuyy/codex-chatgpt-web/issues/209).
-  If no alternate method exists, follow that issue rather than repeatedly deleting the browser
-  profile; there is no safe generic workaround to claim yet.
+스모크 테스트와 실제 턴은 동일한 최신 ChatGPT 컨트롤을 사용합니다. effort 컨트롤, 입력창(composer), 전송 버튼, Temporary Chat, 개인화 또는 뷰포트 관련 오류는 대부분 ChatGPT UI가 브리지에서 안전하게 검증할 수 있는 구조를 노출하지 않았음을 의미합니다.
 
-If an ordinary login still fails, export a safe log immediately after one attempt. Include the OS,
-launcher version, account tier, sign-in provider, and whether the Temporary Chat composer ever
-appeared. Never upload cookies, browser storage, authentication headers, or raw profile files.
+1. 최신 릴리스로 업데이트합니다.
+2. 런처에서 일반 Temporary Chat을 열 수 있는지, 계정에 로그인, 온보딩, 용량 제한 또는 사용량 제한 다이얼로그가 표시되지 않는지 확인합니다.
+3. 런처 창이 보이는 상태에서 스모크 테스트를 한 번 더 실행합니다.
+4. 동일한 구조적 오류가 지속되면 반복해서 재시도하지 마세요. 안전한 로그를 내보내고 명확한 버그 리포트를 등록하세요. ChatGPT UI 변경은 추측이 아니라 실제 관찰된 DOM을 기반으로 수정해야 합니다.
 
-## The browser smoke test fails
+Free 및 Go 계정은 일반적으로 유료 계정의 effort 셀렉터 없이 Luna와 Think를 노출합니다. 이러한 계정에서 유료 셀렉터가 없는 것은 로그인 실패가 아닙니다.
 
-The smoke test and real turns use the same current ChatGPT controls. Errors mentioning the effort
-control, composer, send button, Temporary Chat, personalization, or an operational viewport usually
-mean that the ChatGPT UI did not expose a structure the bridge can safely prove.
+## Full 하네스 또는 MCP 확인이 실패하는 경우
 
-1. Update to the latest release.
-2. Confirm that a normal Temporary Chat can be opened in the launcher and that the account is not
-   showing a login, onboarding, capacity, or rate-limit dialog.
-3. Run the smoke test one more time with the launcher visible.
-4. If the same structural error remains, do not keep retrying. Export a safe log and open a focused
-   bug report; ChatGPT UI drift must be fixed against the observed DOM, not guessed around.
+동영상 가이드:
 
-Free and Go accounts normally expose Luna and Think without the paid-account effort selector. A
-missing paid selector on those accounts is not itself a sign-in failure.
+- OpenAI 터널 및 API 키 생성
+- 로컬 하네스 연결 및 ChatGPT 커넥터 연결
 
-## Full harness or MCP verification fails
+Browser-only 모드에는 커넥터가 필요하지 않습니다. Full 하네스 모드에는 다음 조건이 모두 필요합니다:
 
-Video walkthroughs:
+- 정확히 **Codex Native2**라는 이름으로 새로 생성된 커넥터
+- ChatGPT에서 **Developer Mode**(개발자 모드) 활성화
+- **Authentication: None**으로 설정하여 해당 Tunnel 선택
+- ChatGPT 워크스페이스와 동일한 OpenAI 계정의 커넥터 및 Tunnel
+- 커넥터 권한에서 **Allow all actions** 허용
+- **Verify runtime**을 누르기 전에 **Connect harness** 완료
 
-- [Create an OpenAI tunnel and API key](launcher/src/assets/mcp-create-tunnel.mp4)
-- [Connect the local harness and attach the ChatGPT connector](launcher/src/assets/mcp-connect-connector.mp4)
+이전의 **Codex Native** 커넥터 이름을 바꾸거나 새로고침하지 마세요. ChatGPT는 커넥터 식별자별로 공개 MCP 계약을 캐시하므로, 반드시 **Codex Native2**라는 이름으로 새 커넥터를 만들어야 합니다.
 
-Browser-only mode needs no connector. Full harness mode requires all of the following:
+업데이트 후에도 `codex_exec`에 `sandbox_permissions`, `justification`, `prefix_rule`이 표시되지 않는다면 현재 모드의 커넥터를 다시 생성하여 ChatGPT가 업데이트된 도구 스키마를 로드하도록 하세요. 이 필드들은 Codex에 권한 요청을 전달할 뿐이며, 명령 실행 여부는 여전히 Codex의 샌드박스 및 승인 정책에 따라 결정됩니다. 일반 명령에는 이 선택적 필드가 필요하지 않습니다.
 
-- a newly created connector named exactly **Codex Native2**;
-- **Developer Mode** enabled in ChatGPT;
-- the exact Tunnel selected with **Authentication: None**;
-- the connector and Tunnel on the same OpenAI account as the ChatGPT workspace;
-- **Allow all actions** under the connector's permissions; and
-- **Connect harness** completed before **Verify runtime**.
+### ChatGPT에 `Error creating connector`가 표시되는 경우
 
-Do not rename or refresh an old **Codex Native** connector. ChatGPT caches the public MCP contract by
-connector identity, so create **Codex Native2** as a new connector.
+1. Tunnel ID와 런처에서 사용하는 일반 API 키가 동일한 OpenAI 계정에서 생성되었는지 확인하세요.
+2. ChatGPT에서 커넥터를 만들기 전에 런처가 로컬 하네스를 연결했고 Tunnel이 실행 중인지 확인하세요.
+3. Tunnel이 정상일 때도 ChatGPT가 첫 번째 **Create** 시도를 한 번 거부할 수 있으며, 대개 5~10초 후에 발생합니다. **Create**를 한 번 더 누르세요. 두 번째 시도도 실패하면 재시도를 멈추고 계정, Tunnel ID, 실행 중인 Tunnel을 먼저 다시 확인하세요.
 
-After updating, if `codex_exec` still does not expose `sandbox_permissions`, `justification`, and
-`prefix_rule`, recreate the current mode's connector so ChatGPT loads the updated tool schema.
-These fields only forward a permission request to Codex; its sandbox and approval policy still
-decide whether the command can run. Ordinary commands do not require these optional fields.
+기본 Codex 할당량이 소진될 때까지 도구 호출이 정상 작동하다가 **Automatic approval review**에 의해 편집이 거부되는 경우, 해당 선택적 Codex 검토 설정을 비활성화하고 Codex를 다시 시작하세요. 외부 Codex 샌드박스와 명시적 승인은 여전히 적용되며, 이는 웹 도구 호출이 이미 완료된 후 사용할 수 없는 네이티브 모델이 추가 검토자로 삽입되는 것을 방지할 뿐입니다.
 
-### ChatGPT shows `Error creating connector`
+## `Reconnecting`, `stream disconnected` 또는 `ChatGPT failed`
 
-1. Confirm that the Tunnel ID and the regular API key used by the launcher were created under the
-   same OpenAI account.
-2. Confirm that the launcher has connected the local harness and the Tunnel is running before you
-   create the connector in ChatGPT.
-3. ChatGPT can reject the first **Create** attempt once even when the Tunnel is healthy, usually
-   after 5–10 seconds. Press **Create** one more time. If the second attempt also fails, stop
-   retrying and recheck the account, Tunnel ID, and running Tunnel first.
+이것들은 단일 진단명이 아니라 결과의 경계 상태를 나타냅니다. 브리지는 완전한 ChatGPT 턴을 확인할 수 없을 때 이 메시지를 사용합니다. 흔한 원인으로는 계정 측 사용량 제한, ChatGPT 자체의 "Something went wrong" 상태, 변경된 UI 컨트롤, 닫힌 브라우저 화면, 충돌하는 라우트, 제한된 MCP 기한을 초과한 도구 등이 있습니다.
 
-If tool calls work until native Codex quota is exhausted and then edits are denied by **Automatic
-approval review**, disable that optional Codex review setting and restart Codex. The outer Codex
-sandbox and explicit approvals still apply; this only prevents an unavailable native model from
-being inserted as an extra reviewer after the Web tool call already completed.
+- 재연결 시도 후 최종 상세 오류를 확인하세요. `Reconnecting`이라는 단어만 보고하지 마세요.
+- 새로운 Codex 작업에서 한 번 다시 시도해 보세요. 새 작업이 정상 작동하는지, 실패가 일관되게 발생하는지 확인하세요.
+- **Settings → Run doctor**를 실행하고 실패 직후 안전한 로그를 내보내세요.
+- 정확한 모델명, Browser-only 모드인지 Full 하네스 모드인지, 도구가 실행되었는지, ChatGPT 페이지에 최종 답변이 표시되었는지를 기재하세요.
 
-## `Reconnecting`, `stream disconnected`, or `ChatGPT failed`
+일반적인 502 오류가 발생했다고 해서 Tunnel이 고장 났다고 단정하지 마세요. v4.0.7부터는 턴 바인딩보다 오래 실행된 네이티브 도구는 모호한 프록시 성공으로 표시되지 않고 `codex_tool_timeout`으로 명시적으로 보고되어 정리됩니다.
 
-These are result boundaries, not one diagnosis. The bridge uses them when it cannot prove a complete
-ChatGPT turn. Common causes include an account-side rate limit, ChatGPT's own "Something went wrong"
-state, a changed UI control, a closed browser surface, a conflicting route, or a tool that exceeded
-its bounded MCP deadline.
+## 네이티브 컴팩션이 `404 Not Found`를 반환하는 경우
 
-- Read the final detailed error after the reconnect attempts; do not report only the word
-  `Reconnecting`.
-- Retry once in a fresh Codex task. State whether the fresh task works and whether the failure is
-  consistent.
-- Run **Settings → Run doctor** and export a safe log immediately after the failure.
-- Include the exact model, Browser-only or Full harness mode, whether tools ran, and whether the
-  ChatGPT page showed a final answer.
+일반 Codex 모델의 경우 `/v1/responses/compact`는 네이티브 레거시 컴팩션 엔드포인트로 요청을 전달합니다. 해당 엔드포인트는 모델과 인증이 정상이어도 업스트림 404를 반환할 수 있습니다. 설정 레이어에서 `[features].remote_compaction_v2 = false`를 설정했는지 확인하세요. 최신 Codex는 기본적으로 V2를 활성화합니다. 해당 override를 제거하거나 기존 키를 `true`로 설정한 다음 Codex를 다시 시작하고 동일한 네이티브 모델에서 컴팩션을 재시도하세요. V2는 컴팩션 트리거와 함께 `/responses`를 사용합니다.
 
-Do not assume that a generic 502 means the Tunnel is broken. Since v4.0.7, a native tool that
-outlives its turn binding is reported explicitly as `codex_tool_timeout` and retired rather than
-being presented as an ambiguous proxy success.
+그래도 실패하면 유효한 기능 설정, 선택된 모델, 정확한 실패 시간 및 안전한 로그를 포함하세요. `native_compaction_upstream_failed`는 프롬프트 내용이나 자격 증명 없이 라우트, 모델, HTTP 상태 및 사용 가능한 요청 식별자를 기록합니다. 별도의 웹 컨텍스트 길이 오류는 자체적인 진단이 필요하며, 네이티브 프로토콜을 변경한다고 해서 웹 입력 한도가 증가하지는 않습니다.
 
-## Native compaction returns `404 Not Found`
+## ChatGPT에서 계정이 일시적으로 제한되었다고 표시되는 경우
 
-For an ordinary Codex model, `/v1/responses/compact` forwards to the native legacy compact
-endpoint. That endpoint can return an upstream 404 even when the model and authorization work.
-Check whether a config layer sets `[features].remote_compaction_v2 = false`. Current Codex enables
-V2 by default; remove that override or set the existing key to `true`, then restart Codex and retry
-compaction on the same native model. V2 uses `/responses` with a compaction trigger.
+브리지는 계정 안전 한도로 최대 5개의 동시 브라우저 탭을 허용합니다. 5개는 권장 동시성 설정이 아니며, ChatGPT는 고정된 숫자 할당량이나 쿨다운 시간을 공개하지 않습니다. 일부 계정은 짧은 간격으로 2개의 턴만 시작해도 제한에 도달했습니다.
 
-If it still fails, include the effective feature setting, selected model, exact failure time and
-safe log. `native_compaction_upstream_failed` records the route, model, HTTP status and available
-request identifiers without prompt contents or credentials. A separate Web context-length error
-still requires its own diagnosis; changing the native protocol does not increase Web input limits.
-
-## ChatGPT says the account is temporarily limited
-
-The bridge permits at most five simultaneous browser tabs as an account-safety ceiling. Five is not
-a recommended concurrency setting, and ChatGPT does not expose a stable numeric quota or cooldown.
-Some accounts have reached a limit with only two turns started close together.
-
-After the first account-side limit response, stop retrying and let the cooldown clear. For a
-conservative starting point, set one spawned agent thread at a time in the existing `[agents]`
-section of `~/.codex/config.toml`:
+계정 측에서 첫 번째 제한 응답을 받으면 재시도를 중단하고 쿨다운이 해제될 때까지 기다리세요. 안전한 시작점으로 `~/.codex/config.toml`의 기존 `[agents]` 섹션에 한 번에 하나의 에이전트 스레드만 생성하도록 설정하세요:
 
 ```toml
 [agents]
 max_concurrent_threads_per_session = 1
 ```
 
-If the table already exists, add or change only the key; do not create a second `[agents]` table.
-Bigger Context can make one turn larger and longer, but does not increase safe account concurrency.
+해당 테이블이 이미 존재한다면 키만 추가하거나 변경하세요. 두 번째 `[agents]` 테이블을 만들지 마세요. Bigger Context는 단일 턴을 더 크고 길게 만들 수 있지만, 안전한 계정 동시성을 늘려주지는 않습니다.
 
-## Images from earlier turns are attached again
+## 이전 턴의 이미지가 다시 첨부되는 경우
 
-Codex includes prior task images in the canonical conversation context. The bridge follows that
-context and keeps only the newest ten complete images, so seeing an earlier image again in the same
-task is expected. Start a new Codex task when the new request must not carry earlier image context.
+Codex는 이전 작업의 이미지를 정규 대화 컨텍스트에 포함합니다. 브리지는 이 컨텍스트를 따르며 최신 10개의 완전한 이미지만 유지하므로, 동일한 작업에서 이전 이미지가 다시 나타나는 것은 정상 동작입니다. 새 요청에 이전 이미지 컨텍스트가 포함되지 않아야 하는 경우 새 Codex 작업을 시작하세요.
 
-Open an issue if the launcher reports that ChatGPT did not accept all attachments, or if images from
-a different Codex task appear. Include a fresh safe log with the failing trace and attachment stage.
-Do not replace inline images with arbitrary local paths: browser-only and compaction turns
-intentionally do not receive unrestricted filesystem access.
+런처에서 ChatGPT가 모든 첨부 파일을 수락하지 않았다고 보고하거나 다른 Codex 작업의 이미지가 나타나는 경우 이슈를 등록하세요. 실패한 추적 및 첨부 단계가 포함된 최신 안전 로그를 첨부하세요. 인라인 이미지를 임의의 로컬 경로로 대체하지 마세요. 브라우저 전용 및 컴팩션 턴에는 의도적으로 무제한 파일 시스템 접근 권한이 부여되지 않습니다.
 
-## Image generation stops before an image appears
+## 이미지가 나타나기 전에 이미지 생성이 중단되는 경우
 
-Image generation inside the ChatGPT browser conversation is not currently a supported turn type.
-ChatGPT uses a separate generation lifecycle that the text-response bridge cannot reliably prove
-complete or retrieve through its current contract.
+ChatGPT 브라우저 대화 내에서의 이미지 생성은 현재 지원되는 턴 유형이 아닙니다. ChatGPT는 텍스트 응답 브리지가 현재 계약을 통해 완료를 안정적으로 검증하거나 검색할 수 없는 별도의 생성 수명주기를 사용합니다.
 
-Codex's native Image Gen tool uses a different path: it sends `/v1/images/generations` or
-`/v1/images/edits` through the configured Codex base URL. The bridge forwards those requests to the
-native Codex backend using the incoming Codex authorization. A local `404 Not found` on these paths
-in 5.0.4 or earlier is a missing bridge route, not proof of an OpenAI plugin or backend failure.
-Upstream authentication and image-allowance errors remain unchanged; the ChatGPT browser connector
-does not provide credentials or additional allowance for native Image Gen.
+Codex의 네이티브 Image Gen 도구는 다른 경로를 사용합니다. 설정된 Codex 기본 URL을 통해 `/v1/images/generations` 또는 `/v1/images/edits`를 전송합니다. 브리지는 수신된 Codex 인증을 사용하여 해당 요청을 네이티브 Codex 백엔드로 전달합니다. 5.0.4 이하 버전에서 이 경로에 대한 로컬 `404 Not found`는 브리지 라우트가 누락된 것이며 OpenAI 플러그인이나 백엔드 실패가 아닙니다. 업스트림 인증 및 이미지 허용량 오류는 그대로 유지됩니다. ChatGPT 브라우저 커넥터는 네이티브 Image Gen에 대한 자격 증명이나 추가 허용량을 제공하지 않습니다.
 
-## Update, repair, and remove
+## 업데이트, 복구 및 제거
 
-To update, quit **Codex Web GPT** and run the same installer command from the README. The installer
-replaces the application and runtime while preserving the launcher configuration and private
-ChatGPT profile.
+업데이트하려면 **Codex Web GPT**를 종료하고 README의 동일한 설치 명령을 실행하세요. 설치 프로그램은 런처 설정과 비공개 ChatGPT 프로필을 유지하면서 애플리케이션과 런타임을 교체합니다.
 
-To repair a valid installation, use **Repair Codex setup** once and fully restart Codex. Avoid
-deleting configuration until **Run doctor** and a safe log identify which layer failed.
+유효한 설치를 복구하려면 **Repair Codex setup**을 한 번 사용하고 Codex를 완전히 다시 시작하세요. **Run doctor**와 안전한 로그를 통해 어떤 레이어가 실패했는지 확인할 때까지 설정을 삭제하지 마세요.
 
-To remove the integration safely:
+통합을 안전하게 제거하려면:
 
-1. Open **Settings → Remove Codex integration** and wait for it to restore the previous Codex route.
-2. Fully restart Codex.
-3. Quit the launcher and uninstall the application normally for the platform.
-4. If Full harness was configured and is no longer wanted, separately delete **Codex Native2**, its
-   Tunnel, and the API key created for that Tunnel from the corresponding account settings.
+1. **Settings → Remove Codex integration**을 열고 이전 Codex 경로가 복원될 때까지 기다립니다.
+2. Codex를 완전히 다시 시작합니다.
+3. 런처를 종료하고 플랫폼에 맞게 애플리케이션을 정상적으로 제거합니다.
+4. Full 하네스를 구성했으나 더 이상 원하지 않는 경우 해당 계정 설정에서 **Codex Native2**, 해당 Tunnel 및 해당 Tunnel용으로 생성된 API 키를 별도로 삭제합니다.
 
-Deleting the application before step 1 can leave Codex pointed at a local route that no longer
-exists.
+1단계를 거치지 않고 애플리케이션을 먼저 삭제하면 Codex가 더 이상 존재하지 않는 로컬 경로를 가리킨 채로 남을 수 있습니다.
 
-## Open a useful bug report
+## 유용한 버그 리포트 작성 방법
 
-Use the repository's bug-report form and attach the privacy-safe export from **Activity → Export
-safe log**. A useful report contains:
+저장소의 버그 리포트 양식을 사용하고 **Activity → Export safe log**에서 내보낸 개인정보 보호 사본을 첨부하세요. 유용한 리포트에는 다음 내용이 포함됩니다:
 
-- launcher version and installation method;
-- Codex Desktop and/or CLI version;
-- OS and architecture;
-- ChatGPT account tier;
-- Browser-only, Full harness (automatic), or Zero Risk mode and the exact selected model;
-- For Zero Risk, the ChatGPT model/effort and the last completed step: copying, pasting, sending in ChatGPT, confirming Sent, or the first MCP call;
-- exact reproduction steps and complete final error;
-- whether it reproduces in a fresh Codex task; and
-- a safe log captured immediately after that reproduction.
+- 런처 버전 및 설치 방법
+- Codex Desktop 및/또는 CLI 버전
+- OS 및 아키텍처
+- ChatGPT 계정 등급
+- Browser-only, Full 하네스(automatic), 또는 Zero Risk 모드 및 정확한 선택 모델명
+- Zero Risk 모드의 경우 ChatGPT 모델/effort 및 마지막으로 완료된 단계: 복사, 붙여넣기, ChatGPT에서 전송, Sent 확인, 또는 첫 번째 MCP 호출
+- 정확한 재현 단계 및 완전한 최종 오류 메시지
+- 새로운 Codex 작업에서 재현되는지 여부
+- 해당 재현 직후 캡처한 안전한 로그
 
-Screenshots are welcome, but a screenshot without the exact error and fresh log is usually not
-enough to distinguish setup, routing, browser DOM, account, and MCP failures.
-
-Before uploading anything, read [SECURITY.md](SECURITY.md). Never publish raw launcher logs, cookies,
-browser storage, API keys, Tunnel IDs, full Codex prompts, tool output containing private data, or
-absolute private paths.
+스크린샷 첨부도 좋지만, 정확한 오류와 최신 로그가 없는 스크린샷만으로는 설정, 라우팅, 브라우저 DOM, 계정, MCP 실패를 구분하기 어렵습니다.

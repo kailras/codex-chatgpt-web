@@ -1,29 +1,21 @@
-# DEV chat harness
+# DEV 채팅 하네스
 
-The repository DEV chat exercises current source code without routing the native Codex app through
-that working tree. It is intended for browser, MCP, tool-round, retry, and compaction development
-while the normal launcher, its ChatGPT account, and the maintainer's active Codex session remain
-usable.
+저장소 DEV 채팅은 네이티브 Codex 앱을 해당 작업 트리를 통해 라우팅하지 않고도 현재 소스 코드를 실행합니다. 이는 일반 런처, 해당 ChatGPT 계정 및 유지 관리자의 활성 Codex 세션을 사용할 수 있는 상태로 유지하면서 브라우저, MCP, 도구 라운드, 재시도 및 컴팩션 개발을 수행하기 위한 것입니다.
 
-## Prerequisites
+## 사전 요구 사항
 
-- Use the repository-pinned Bun version.
-- Install a launcher built from the same working tree.
-- Start the isolated launcher with `bun run dev:launcher`.
-- It skips the normal marketing onboarding and opens the setup surface directly. Sign in inside the
-  window labelled **DEV**. This may be a different ChatGPT account.
-- Run its browser smoke test and initialize the DEV profile. Complete MCP setup only when testing
-  simulated tool rounds; browser, effort, context-limit, and compaction work in browser-only mode.
-  The launcher stores any MCP credentials only in the DEV home and supervises only that isolated
-  tunnel. Create the ChatGPT connector as `Codex Native2 DEV`; keep `Codex Native2` unchanged.
+- 저장소에 고정된 Bun 버전을 사용합니다.
+- 동일한 작업 트리에서 빌드된 런처를 설치합니다.
+- `bun run dev:launcher`로 격리된 런처를 시작합니다.
+- 일반 마케팅 온보딩을 건너뛰고 설정 표면을 직접 엽니다. **DEV** 레이블이 지정된 창 내에서 로그인합니다. 이는 다른 ChatGPT 계정일 수 있습니다.
+- 브라우저 스모크 테스트를 실행하고 DEV 프로필을 초기화합니다. 시뮬레이션된 도구 라운드를 테스트할 때만 MCP 설정을 완료하세요. 브라우저, effort, 컨텍스트 제한 및 컴팩션은 browser-only 모드에서 작동합니다.
+  런처는 모든 MCP 자격 증명을 DEV 홈에만 저장하고 격리된 터널만 감독합니다. ChatGPT 커넥터를 `Codex Native2 DEV`로 생성하고 `Codex Native2`는 변경하지 않고 유지합니다.
 
-Nothing is copied from the normal launcher. The DEV command fails closed if its own launcher,
-browser descriptor, credentials, or connector are not ready. It never falls back to the production
-profile, another model, a fake browser, or a second connector.
+일반 런처에서는 아무것도 복사되지 않습니다. DEV 명령은 자체 런처, 브라우저 디스크립터, 자격 증명 또는 커넥터가 준비되지 않은 경우 안전하게 실패(fail closed)합니다. 프로덕션 프로필, 다른 모델, 가짜 브라우저 또는 보조 커넥터로 대체되지 않습니다.
 
-## Run
+## 실행
 
-One browser-only message:
+단일 브라우저 전용 메시지:
 
 ```bash
 bun run dev:launcher
@@ -31,34 +23,23 @@ bun run src/cli.ts dev status
 bun run dev:chat smoke "Reply with exactly: DEV READY"
 ```
 
-Persistent interactive chat:
+지속적인 대화형 채팅:
 
 ```bash
 bun run dev:chat compaction-lab
 ```
 
-After optional Full/MCP setup, the same command also exposes simulated outer tools:
+선택적 Full/MCP 설정 후, 동일한 명령으로 시뮬레이션된 외부 도구를 노출할 수도 있습니다:
 
 ```bash
 bun run dev:chat tool-lab "Use a command tool and explain the simulated receipt"
 ```
 
-The direct DEV tool `mcp__dev_simulator__large_context_payload` accepts the explicit arguments
-`segment` (1, 2, or 3) and `target_tokens` (1,000 to 95,000). It returns deterministic, coherent,
-inert prose through the real simulated MCP-result path so a live named chat can exercise retention
-and automatic compaction without embedding a giant fixture in the user prompt. It is advertised
-directly rather than through deferred tool search so the test can prove the requested call happened.
+직접 DEV 도구 `mcp__dev_simulator__large_context_payload`는 명시적 인수 `segment` (1, 2, 또는 3) 및 `target_tokens` (1,000 ~ 95,000)를 허용합니다. 사용자가 프롬프트에 거대한 픽스처를 포함하지 않고도 라이브 명명된 채팅이 보존 및 자동 컴팩션을 연습할 수 있도록 실제 시뮬레이션된 MCP 결과 경로를 통해 결정론적이고 일관되며 비활성 텍스트를 반환합니다. 지연된 도구 검색 대신 직접 광고되므로 테스트에서 요청된 호출이 발생했음을 증명할 수 있습니다.
 
-Reusing the same name continues its canonical Responses history. Sequential native messages in the
-same compaction epoch lease one Temporary Chat, exactly like production. Every message receives a
-new turn-bound MCP token, and all MCP tool rounds for that message remain inside the same ChatGPT
-response. On an exact native compaction request, the same Web agent submits the checkpoint through
-a one-shot MCP control call in that chat; only then does the surface close and the next epoch open a
-new Temporary Chat. The complete named history remains owned by the existing prompt compiler. New
-chats use the cheapest account-supported browser mode:
-Instant (`light`) when Sol is available, otherwise Luna. Override it with `--model` or `/model`.
+동일한 이름을 재사용하면 정규 Responses 기록이 계속됩니다. 동일한 컴팩션 에포크 내의 순차적인 기본 메시지는 프로덕션과 마찬가지로 하나의 Temporary Chat을 임대합니다. 모든 메시지는 새로운 턴 바인딩 MCP 토큰을 수신하며 해당 메시지에 대한 모든 MCP 도구 라운드는 동일한 ChatGPT 응답 내에 유지됩니다. 정확한 기본 컴팩션 요청 시 동일한 웹 에이전트가 해당 채팅의 단발성 MCP 제어 호출을 통해 체크포인트를 제출합니다. 그 후에 표면이 닫히고 다음 에포크가 새로운 Temporary Chat을 엽니다. 완전한 명명된 기록은 기존 프롬프트 컴파일러가 계속 소유합니다. 새로운 채팅은 계정에서 지원하는 가장 저렴한 브라우저 모드를 사용합니다: Sol을 사용할 수 있는 경우 Instant (`light`), 그렇지 않은 경우 Luna. `--model` 또는 `/model`로 재정의하세요.
 
-Interactive commands:
+대화형 명령:
 
 ```text
 /status
@@ -71,68 +52,26 @@ Interactive commands:
 /exit
 ```
 
-`/fill N` appends deterministic inert text measured by the production tokenizer. It does not open
-ChatGPT. The next message checks the real model-specific auto-compaction threshold and calls the
-same `compactRequest` handler when the threshold is crossed. `/compact` forces that handler
-immediately. Luna keeps its production rolling-checkpoint contract and therefore rejects the
-separate compact command.
+`/fill N`은 프로덕션 토크나이저로 측정된 결정론적 비활성 텍스트를 추가합니다. ChatGPT를 열지 않습니다. 다음 메시지는 실제 모델별 자동 컴팩션 임계값을 확인하고 임계값을 초과할 때 동일한 `compactRequest` 핸들러를 호출합니다. `/compact`는 해당 핸들러를 즉시 강제 실행합니다. Luna는 프로덕션 롤링 체크포인트 계약을 유지하므로 별도의 컴팩트 명령을 거부합니다.
 
-`/send-fill N` sends deterministic inert text as the current message through the live browser. Use
-it to exercise the one-message composer budget and multi-chunk prompt insertion independently of
-history growth. The normal model-specific browser preflight still applies and fails closed above
-the measured transport limit.
+`/send-fill N`은 라이브 브라우저를 통해 현재 메시지로 결정론적 비활성 텍스트를 전송합니다. 히스토리 증가와 무관하게 1개 메시지 입력창 예산 및 멀티 청크 프롬프트 삽입을 연습하는 데 사용합니다. 일반적인 모델별 브라우저 프리플라이트가 계속 적용되며 측정된 전송 한도를 초과하면 안전하게 실패합니다.
 
-## Bigger Context experiment
+## Bigger Context 실험
 
-Both launcher profiles expose **Bigger Context (experimental)** in Settings. It is disabled by
-default. The switch updates the profile's canonical runtime configuration through the normal setup
-transaction; it is not a launcher-only preference. Production setup also rewrites the managed
-Codex model catalog with 3x context and auto-compaction thresholds and asks you to restart Codex.
-The DEV CLI reads the same setting from its isolated runtime configuration on each command.
+두 런처 프로필 모두 설정에서 **Bigger Context (experimental)**를 노출합니다. 기본적으로 비활성화되어 있습니다. 스위치는 일반적인 설정 트랜잭션을 통해 프로필의 정규 런타임 구성을 업데이트합니다. 런처 전용 환경설정이 아닙니다. 프로덕션 설정은 또한 3배 컨텍스트 및 자동 컴팩션 임계값으로 관리형 Codex 모델 카탈로그를 다시 작성하고 Codex를 다시 시작하도록 요청합니다. DEV CLI는 각 명령에서 격리된 런타임 구성으로부터 동일한 설정을 읽습니다.
 
-When enabled, a normal turn stays on the original single-message path while its estimated input
-is below the selected mode's existing auto-compaction threshold. At the first threshold it uses two
-messages; at twice that threshold it uses three messages. The final context part also commits the
-transaction and starts the task, so there is no extra request. The existing DEV compaction threshold
-remains three times the selected mode's base limit.
+활성화되면 예상 입력이 선택한 모드의 기존 자동 컴팩션 임계값 미만인 동안 일반 턴은 원래 단일 메시지 경로에 유지됩니다. 첫 번째 임계값에서는 두 개의 메시지를 사용합니다. 해당 임계값의 두 배에서는 세 개의 메시지를 사용합니다. 최종 컨텍스트 부분은 트랜잭션을 커밋하고 작업을 시작하므로 추가 요청이 없습니다. 기존 DEV 컴팩션 임계값은 선택한 모드의 기본 한도의 세 배로 유지됩니다.
 
-Each stage contains complete semantic records, never a raw JSON string cut in the middle. The model
-must return an exact transaction-bound SHA-256 acknowledgement before the next part is sent.
-Images, the MCP connector, and the private `turn_token` are attached only to the final part.
-In Full/MCP mode, compaction does not replay the expanded history into an unrelated summarizer. If
-the source Web response is still waiting on a tool boundary, its canonical tool results finish that
-response first without a compaction suffix. If those results are enough for an ordinary final
-answer, that committed answer remains owned by the logical Responses turn across the physical chat
-retirement. If the Web model instead requests another tool, the broker blocks that new execution
-and tells the response to stop; the compacted continuation then resumes the unfinished work. The
-exact retained chat receives one strict checkpoint message with only the one-shot MCP control
-capability and no ordinary work capability. The checkpoint never rides in the tail of a potentially
-huge tool result, and its wait is capped at five minutes independently of the normal turn timeout.
-After the structured handoff is accepted, the bridge explicitly ends that one-purpose browser turn
-and waits for its physical launcher settlement before closing the old surface; the next epoch then
-starts a fresh Temporary Chat. This does not depend on ChatGPT rendering assistant text or a Copy
-action after the control-only response. If the retained private chat was already closed, the bridge
-starts one read-only fallback chat from the canonical Codex history instead. Browser-only mode
-has no retained MCP boundary and keeps the three-message compaction path so its summarizer receives
-the complete expanded history.
+각 단계에는 중간에 잘린 원시 JSON 문자열이 아닌 완전한 시맨틱 레코드가 포함됩니다. 다음 부분이 전송되기 전에 모델은 정확한 트랜잭션 바인딩 SHA-256 확인을 반환해야 합니다. 이미지, MCP 커넥터 및 비공개 `turn_token`은 최종 부분에만 첨부됩니다.
+Full/MCP 모드에서 컴팩션은 확장된 히스토리를 관련 없는 요약기로 재생하지 않습니다. 소스 웹 응답이 여전히 도구 경계에서 대기 중인 경우 해당 정규 도구 결과가 컴팩션 접미사 없이 해당 응답을 먼저 완료합니다. 이러한 결과가 일반적인 최종 답변에 충분한 경우 해당 커밋된 답변은 물리적 채팅 폐기 전반에 걸쳐 논리적 Responses 턴에 의해 유지됩니다. 웹 모델이 대신 다른 도구를 요청하면 브로커는 해당 새 실행을 차단하고 응답을 중지하도록 지시합니다. 그런 다음 압축된 연속 대화가 완료되지 않은 작업을 재개합니다. 정확히 유지된 채팅은 단발성 MCP 제어 기능만 있고 일반 작업 기능은 없는 엄격한 체크포인트 메시지를 하나 받습니다. 체크포인트는 잠재적으로 거대한 도구 결과의 꼬리에 포함되지 않으며 일반 턴 타임아웃과 독립적으로 대기 시간이 5분으로 제한됩니다. 구조화된 인수인계가 수락된 후 브리지는 해당 단일 목적 브라우저 턴을 명시적으로 종료하고 이전 표면을 닫기 전에 물리적 런처 정산을 기다립니다. 그런 다음 다음 에포크가 새로운 Temporary Chat을 시작합니다. 이는 제어 전용 응답 후 어시스턴트 텍스트 렌더링이나 복사 작업에 의존하지 않습니다. 유지된 비공개 채팅이 이미 닫힌 경우 브리지는 정규 Codex 기록에서 하나의 읽기 전용 폴백 채팅을 대신 시작합니다. Browser-only 모드에는 유지된 MCP 경계가 없으며 요약기가 완전한 확장 기록을 수신할 수 있도록 3단계 메시지 컴팩션 경로를 유지합니다.
 
-Any missing or malformed acknowledgement fails the whole transaction. No later part or final
-commit is sent, and a retry starts again from part one in a fresh Temporary Chat. The model context
-and auto-compaction ceilings are reported as 3× while the switch is active, but every individual
-stage must still fit the selected ChatGPT mode's measured one-message boundary.
+누락되거나 형식이 잘못된 확인은 전체 트랜잭션을 실패시킵니다. 이후 부분이나 최종 커밋은 전송되지 않으며 재시도는 새로운 Temporary Chat의 1단계부터 다시 시작됩니다. 모델 컨텍스트 및 자동 컴팩션 한도는 스위치가 활성 상태인 동안 3배로 보고되지만 모든 개별 단계는 선택한 ChatGPT 모드의 측정된 1개 메시지 경계에 맞아야 합니다.
 
-Small turns add no requests. Two-part turns add two staging requests and acknowledgements; three-part
-turns add three. Browser-only compaction also uses three stages. Large turns are therefore slower and may increase the probability of
-rate limits or a temporary account cooldown. The experiment is intentionally unavailable for Luna:
-Luna's later requests still include the accumulated transcript inside the same measured
-28,000-token browser transport budget.
+작은 턴은 요청을 추가하지 않습니다. 2단계 턴은 두 개의 스테이징 요청 및 확인을 추가합니다. 3단계 턴은 세 개를 추가합니다. Browser-only 컴팩션도 3단계를 사용합니다. 따라서 큰 턴은 속도가 느리고 사용량 제한이나 임시 계정 쿨다운의 가능성을 높일 수 있습니다. 이 실험은 의도적으로 Luna에서 사용할 수 없습니다. Luna의 이후 요청에는 동일한 측정된 28,000 토큰 브라우저 전송 예산 내에 누적된 트랜스크립트가 여전히 포함되어 있습니다.
 
-Browser-only chats do not advertise outer tools and never claim simulated effects. Full setup keeps
-the launcher-owned DEV tunnel ready so ChatGPT can create and validate `Codex Native2 DEV` before a
-CLI chat starts. Each named chat attaches its broker to that tunnel, while every dispatched action
-still returns an explicit simulation receipt.
+Browser-only 채팅은 외부 도구를 광고하지 않으며 시뮬레이션된 효과를 절대 주장하지 않습니다. 전체 설정은 런처 소유 DEV 터널을 준비 상태로 유지하여 CLI 채팅이 시작되기 전에 ChatGPT가 `Codex Native2 DEV`를 생성하고 검증할 수 있도록 합니다. 각 명명된 채팅은 해당 브로커를 해당 터널에 연결하는 반면, 디스패치된 모든 작업은 여전히 명시적인 시뮬레이션 영수증을 반환합니다.
 
-The default isolated home is:
+기본 격리 홈은 다음과 같습니다:
 
 ```text
 ~/.codex-chatgpt-web-dev/
@@ -144,31 +83,24 @@ The default isolated home is:
 └── tunnel/
 ```
 
-Set `CODEX_WEB_GPT_DEV_HOME` to choose another absolute DEV home. Generic `--home`,
-`CODEX_CHATGPT_WEB_HOME`, `CODEX_HOME`, and `CODEX_WEB_GPT_LAUNCHER_DATA_DIR` never collapse the DEV
-launcher into production storage.
+다른 절대 DEV 홈을 선택하려면 `CODEX_WEB_GPT_DEV_HOME`을 설정하세요. 일반적인 `--home`, `CODEX_CHATGPT_WEB_HOME`, `CODEX_HOME` 및 `CODEX_WEB_GPT_LAUNCHER_DATA_DIR`은 DEV 런처를 프로덕션 스토리지로 축소하지 않습니다.
 
-## Isolation contract
+## 격리 계약
 
-The DEV driver:
+DEV 드라이버는:
 
-- requires a descriptor explicitly marked `development` and a config explicitly marked
-  `dev-harness`;
-- uses a separate Electron `userData` directory and a separate persistent browser partition, so
-  cookies, OAuth state, local storage, account selection, and launcher state cannot cross profiles;
-- uses an isolated sandbox `CODEX_HOME` but never writes a Codex route into it;
-- does not call setup, route connect/disconnect, service start/stop, or uninstall;
-- does not start `Bun.serve` or bind the configured Responses port;
-- rejects any attempt to start the Responses server from a `dev-harness` config;
-- does not edit the normal `~/.codex/config.toml` or integration journal;
-- leases an isolated DEV-launcher browser tab and runs the working-tree browser helper;
-- owns the private DEV broker socket only for the command's lifetime;
-- reuses the isolated tunnel supervised by the DEV launcher and never starts a competing alias;
-- can run beside the production launcher, Responses port, and tunnel because none of their homes,
-  browser partitions, descriptors, broker sockets, profiles, or aliases are shared;
-- refuses to run Full-mode tool rounds until the launcher-owned DEV tunnel is ready;
-- exposes ordinary structural tools, then returns a universal receipt containing
-  `simulated: true` and `side_effects_performed: false` for every dispatched action.
+- 명시적으로 `development`로 표시된 디스크립터와 명시적으로 `dev-harness`로 표시된 구성이 필요합니다.
+- 별도의 Electron `userData` 디렉터리와 별도의 영구 브라우저 파티션을 사용하므로 쿠키, OAuth 상태, 로컬 스토리지, 계정 선택 및 런처 상태가 프로필 간에 교차할 수 없습니다.
+- 격리된 샌드박스 `CODEX_HOME`을 사용하지만 여기에 Codex 라우트를 작성하지 않습니다.
+- setup, route connect/disconnect, service start/stop 또는 uninstall을 호출하지 않습니다.
+- `Bun.serve`를 시작하거나 구성된 Responses 포트를 바인딩하지 않습니다.
+- `dev-harness` 구성에서 Responses 서버를 시작하려는 모든 시도를 거부합니다.
+- 일반적인 `~/.codex/config.toml` 또는 통합 저널을 편집하지 않습니다.
+- 격리된 DEV 런처 브라우저 탭을 임대하고 작업 트리 브라우저 헬퍼를 실행합니다.
+- 명령의 수명 동안에만 비공개 DEV 브로커 소켓을 소유합니다.
+- DEV 런처가 감독하는 격리된 터널을 재사용하며 경쟁하는 별칭을 시작하지 않습니다.
+- 홈, 브라우저 파티션, 디스크립터, 브로커 소켓, 프로필 또는 별칭이 공유되지 않으므로 프로덕션 런처, Responses 포트 및 터널과 함께 실행될 수 있습니다.
+- 런처 소유 DEV 터널이 준비될 때까지 Full 모드 도구 라운드 실행을 거부합니다.
+- 일반적인 구조적 도구를 노출한 다음 디스패치된 모든 작업에 대해 `simulated: true` 및 `side_effects_performed: false`가 포함된 범용 영수증을 반환합니다.
 
-The simulator has no keyword-to-result table and never claims that a command, patch, image read,
-user interaction, or external mutation actually happened.
+시뮬레이터에는 키워드-결과 테이블이 없으며 명령, 패치, 이미지 읽기, 사용자 상호 작용 또는 외부 변경이 실제로 발생했다고 주장하지 않습니다.

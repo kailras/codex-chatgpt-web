@@ -1,77 +1,45 @@
-# Release validation
+# 릴리스 검증
 
-CI proves that the runtime builds, the launcher starts, and native packages pass their smoke
-contract on macOS, Windows, and Linux. It does not prove an authenticated ChatGPT session, a live
-MCP connector, or a complete Codex turn. A release candidate is not ready until those account-bound
-flows are exercised manually on the platforms below.
+CI는 런타임이 빌드되고, 런처가 시작되며, 네이티브 패키지가 macOS, Windows 및 Linux에서 스모크 계약을 통과함을 증명합니다. 그러나 인증된 ChatGPT 세션, 라이브 MCP 커넥터 또는 완전한 Codex 턴을 증명하지는 않습니다. 아래 플랫폼에서 이러한 계정 바인딩 흐름을 수동으로 수행하기 전까지는 릴리스 후보(RC)가 준비된 것이 아닙니다.
 
-## Required evidence
+## 필수 증거
 
-Record the release version, operating-system version, install path (`clean` or `upgrade`), ChatGPT
-plan, Codex version, result of each check, and a redacted Activity log for every failure. Never
-capture cookies, tunnel IDs, API keys, bearer tokens, or prompt contents.
+릴리스 버전, 운영 체제 버전, 설치 경로(`clean` 또는 `upgrade`), ChatGPT 플랜, Codex 버전, 각 확인 결과 및 모든 실패에 대한 개인정보가 삭제(redact)된 Activity 로그를 기록하세요. 쿠키, 터널 ID, API 키, bearer 토큰 또는 프롬프트 내용은 절대로 캡처하지 마세요.
 
-## Windows 11 gate
+## Windows 11 게이트
 
-Run this list on a maintained Windows 11 x64 machine with a real ChatGPT account:
+유지 관리되는 Windows 11 x64 기기에서 실제 ChatGPT 계정으로 다음 목록을 실행하세요:
 
-1. Install the packaged launcher on a clean profile and prove that the embedded Bun runtime starts.
-2. Sign in inside the embedded browser and prove that Temporary Chat reaches a usable composer.
-3. Install the Codex model route, restart Codex, and prove that every account-available ChatGPT Web
-   effort appears exactly once without removing native models.
-4. Complete one Browser-only turn and verify streamed commentary plus the final answer.
-5. Configure the `Codex Native2` connector, run **Verify runtime**, and complete one Full-mode local
-   tool turn. Repeat with Pro when the account exposes Pro.
-6. Drive a chat past the compaction threshold and prove that it continues after compaction without
-   a duplicate or orphaned browser turn.
-7. On a clean install, prove that setup offers both interaction modes and defaults to With
-   Automation. Select Zero Risk and prove that Codex shows exactly one generic Web model after
-   restart, a retained chat receives only the next prompt, and
-   compaction completes through MCP before the compacted continuation opens a fresh manual chat.
-   Inspect the copied prompt and prove that it contains only the current `request_id`, never a
-   surface nonce, capability token, or prompt-level lifecycle commands.
-   Switch back to Automatic and prove that the account-visible catalog is restored.
-8. Cancel a running turn by closing its launcher tab, then cancel another with the launcher action;
-   prove that neither turn recreates a tab or keeps the runtime busy.
-9. Quit the launcher during an active turn, confirm the explicit cancellation path, reopen it, and
-   prove that the saved ChatGPT session and Codex route are still valid.
-10. Prove Codex Voice can create a WebRTC call while Responses use the local bridge. Disconnect the
-   bridge and prove that both exact previous route assignments are restored; reconnect it and prove
-   that the existing private MCP credentials are reused rather than replaced.
-11. Upgrade from the previous public release and prove that launcher state, browser state, Codex
-    settings, and MCP configuration survive the updater transaction.
+1. 클린 프로필에 패키징된 런처를 설치하고 내장 Bun 런타임이 시작되는지 증명합니다.
+2. 내장 브라우저 내에서 로그인하고 Temporary Chat이 사용 가능한 입력창에 도달하는지 증명합니다.
+3. Codex 모델 경로를 설치하고, Codex를 다시 시작하며, 네이티브 모델을 제거하지 않고 계정에서 사용 가능한 모든 ChatGPT Web effort가 정확히 한 번씩 표시되는지 증명합니다.
+4. Browser-only 턴을 하나 완료하고 스트리밍된 설명(commentary)과 최종 답변을 확인합니다.
+5. `Codex Native2` 커넥터를 구성하고, **Verify runtime**을 실행하며, 하나의 Full 모드 로컬 도구 턴을 완료합니다. 계정에 Pro가 노출되는 경우 Pro로 반복합니다.
+6. 채팅을 컴팩션 임계값 이상으로 진행시키고 중복되거나 분리된(orphaned) 브라우저 턴 없이 컴팩션 후에도 계속 진행되는지 증명합니다.
+7. 클린 설치 시 설정에서 두 상호작용 모드가 모두 제공되고 With Automation(자동화 포함)이 기본값인지 증명합니다. Zero Risk를 선택하고 재시작 후 Codex에 정확히 하나의 일반 웹 모델이 표시되는지, 유지된 채팅이 다음 프롬프트만 수신하는지, 그리고 컴팩션된 연속 대화가 새로운 수동 채팅을 열기 전에 MCP를 통해 컴팩션이 완료되는지 증명합니다.
+   복사된 프롬프트를 검사하여 현재 `request_id`만 포함되어 있고 표면 nonce, 기능 토큰 또는 프롬프트 수준 수명주기 명령이 포함되어 있지 않은지 증명합니다.
+   Automatic으로 다시 전환하고 계정에 표시되는 카탈로그가 복원되는지 증명합니다.
+8. 런처 탭을 닫아 실행 중인 턴을 취소한 다음 런처 동작으로 다른 턴을 취소합니다. 두 턴 모두 탭을 다시 생성하거나 런타임을 사용 중 상태로 유지하지 않는지 증명합니다.
+9. 활성 턴 중에 런처를 종료하고, 명시적 취소 경로를 확인하고, 다시 열어 저장된 ChatGPT 세션과 Codex 경로가 여전히 유효한지 증명합니다.
+10. Responses가 로컬 브리지를 사용하는 동안 Codex Voice가 WebRTC 통화를 생성할 수 있는지 증명합니다. 브리지 연결을 끊고 두 가지 이전 경로 할당이 정확히 복원되는지 증명합니다. 다시 연결하고 기존 비공개 MCP 자격 증명이 교체되지 않고 재사용되는지 증명합니다.
+11. 이전 공개 릴리스에서 업그레이드하고 런처 상태, 브라우저 상태, Codex 설정 및 MCP 구성이 업데이터 트랜잭션 후에도 유지되는지 증명합니다.
 
-Any failed or unexecuted item blocks a stable release. An alpha may ship with a named failed item
-only when the release notes describe the limitation and recovery path explicitly.
+실패하거나 실행되지 않은 항목이 있으면 안정 릴리스가 차단됩니다. 알파 버전은 릴리스 노트에 제한 사항과 복구 경로를 명시적으로 설명하는 경우에만 지정된 실패 항목과 함께 출시될 수 있습니다.
 
-### v3.0.0 result
+### v3.0.0 결과
 
-Maintainer validation passed on Windows 11 x64 on 2026-08-22 using the published v3.0.0-alpha
-upgrade package and a real ChatGPT Pro account. The authenticated launcher, Codex model catalog,
-Full-mode MCP tools, Pro turns, compaction, cancellation, session reuse, and preserved connector
-configuration were exercised successfully. The direct installer completed successfully but gave no
-clear completion action; v3.0.0 changes it to an assisted installer with a final launch option.
+유지 관리자 검증은 2026-08-22에 게시된 v3.0.0-alpha 업그레이드 패키지와 실제 ChatGPT Pro 계정을 사용하여 Windows 11 x64에서 통과했습니다. 인증된 런처, Codex 모델 카탈로그, Full 모드 MCP 도구, Pro 턴, 컴팩션, 취소, 세션 재사용 및 보존된 커넥터 구성이 성공적으로 실행되었습니다. 직접 설치 프로그램은 성공적으로 완료되었지만 명확한 완료 작업이 제공되지 않았습니다. v3.0.0에서는 최종 실행 옵션이 포함된 보조 설치 프로그램으로 변경되었습니다.
 
-### v4.0.8 security hardening notes
+### v4.0.8 보안 강화 노트
 
-This patch adds loopback `Host`/`Origin` validation to every daemon route, including `/healthz`, to
-reject DNS-rebinding and cross-origin requests. Tunnel-client v0.0.12 downloads now require a
-source-pinned SHA-256 match for all six supported platform archives before the existing upstream
-`SHA256SUMS.txt` comparison. Security guidance recommends Browser-only mode for untrusted
-repositories, pull requests, and dependency changes; CDP remains random-port and loopback-only.
+이 패치는 DNS 리바인딩 및 크로스 오리진 요청을 거부하기 위해 `/healthz`를 포함한 모든 데몬 라우트에 루프백 `Host`/`Origin` 유효성 검사를 추가합니다. Tunnel-client v0.0.12 다운로드는 이제 기존 업스트림 `SHA256SUMS.txt` 비교 전에 지원되는 6개 플랫폼 아카이브 모두에 대해 소스 고정 SHA-256 일치를 요구합니다. 보안 지침은 신뢰할 수 없는 저장소, 풀 리퀘스트 및 의존성 변경에 대해 Browser-only 모드를 권장합니다. CDP는 랜덤 포트 및 루프백 전용으로 유지됩니다.
 
-The automated repository verification gate passed. The separate cross-network archive re-download
-check and account-bound release-validation flows below remain release-operator gates and are not
-claimed by this document.
+자동화된 저장소 검증 게이트를 통과했습니다. 별도의 크로스 네트워크 아카이브 재다운로드 확인 및 아래의 계정 바인딩 릴리스 검증 흐름은 릴리스 운영자 게이트로 유지되며 이 문서에서 완료를 주장하지 않습니다.
 
-## macOS gate
+## macOS 게이트
 
-Repeat items 2 through 10 on the oldest supported macOS version or the closest maintained machine.
-Packaging smoke and code-signing verification remain separate gates; neither substitutes for the
-interactive account flow.
+지원되는 가장 오래된 macOS 버전 또는 가장 가까운 유지 관리 머신에서 2번부터 10번까지 항목을 반복합니다. 패키징 스모크 및 코드 서명 확인은 별도의 게이트로 유지되며 대화형 계정 흐름을 대체하지 않습니다.
 
-## Linux gate
+## Linux 게이트
 
-CI packaging smoke is required. Before claiming interactive Linux support for a release, repeat
-items 2 through 7 under a supported desktop session and record the display server and packaging
-format used.
+CI 패키징 스모크가 필요합니다. 릴리스에 대해 대화형 Linux 지원을 주장하기 전에 지원되는 데스크톱 세션에서 2번부터 7번까지 항목을 반복하고 사용된 디스플레이 서버 및 패키징 형식을 기록하세요.

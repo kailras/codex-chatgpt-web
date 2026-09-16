@@ -197,6 +197,34 @@ const en = {
   doctorLoginVerified: "ChatGPT login state has authenticated browser evidence",
   doctorMacServiceLoaded: "macOS background service is loaded",
   doctorMacTunnelRunning: "macOS tunnel service is installed, loaded, and running",
+  doctorErrProxyHttp: "Responses proxy returned HTTP {status}",
+  doctorErrPortConflict: "The configured port belongs to another service",
+  doctorErrModeMismatch: "Daemon is running in {running} mode; config requires {required}",
+  doctorErrVersionMismatch: "Daemon version is {running}; config requires {required}",
+  doctorErrProxyDrained: "Responses proxy is still drained and is not accepting Codex turns",
+  doctorErrProxyOwnership: "Responses proxy ownership could not be verified",
+  doctorErrProxyUnreachable: "Responses proxy is not reachable",
+  doctorErrConfigInvalid: "Configuration is invalid",
+  doctorErrBrowserUnavailable: "Embedded launcher browser is unavailable",
+  doctorErrChromeMissing: "Chrome executable is missing: {path}",
+  doctorErrLoginMissing: "ChatGPT login state is missing or unverified; run `codex-chatgpt-web login`",
+  doctorErrLoginPermissions: "ChatGPT login state is readable by other users: {path}",
+  doctorErrMarkerPermissions: "ChatGPT login verification marker is readable by other users",
+  doctorErrCodexRouteMissing: "Codex model route is not installed",
+  doctorErrCodexInconsistent: "Codex integration is inconsistent",
+  doctorErrMacServiceNotLoaded: "macOS background service is not installed and loaded",
+  doctorErrTunnelBinaryMissing: "tunnel-client is missing: {path}",
+  doctorErrTunnelKeyMissing: "Tunnel runtime key file is missing",
+  doctorErrTunnelKeyPermissions: "Tunnel runtime key file has unsafe permissions",
+  doctorErrMacTunnelNotRunning: "macOS tunnel service is not fully running",
+  doctorErrTunnelRuntimeNotReady: "Tunnel runtime is not ready",
+  doctorWarnLegacyService: "A legacy OS background service still exists; rerun launcher setup to migrate ownership",
+  doctorWarnServiceUnsupported: "Managed service is unavailable on this OS; keep `serve` running manually",
+  doctorWarnLegacyTunnelService: "A legacy OS tunnel service still exists; rerun launcher MCP setup to migrate ownership",
+  doctorWarnConnectorUnproved: "Local checks cannot prove that ChatGPT connector \"{name}\" is attached to this tunnel",
+  doctorWarnBrowserOnly: "Browser-only mode intentionally has no local tools or MCP tunnel",
+  finishActiveCodexTaskBeforeVerify: "Finish the active Codex task before verifying the ChatGPT connector",
+  shutdownAlreadyInProgress: "Launcher shutdown is already in progress",
 } as const;
 
 const zh: Record<keyof typeof en, string> = {
@@ -396,6 +424,34 @@ const zh: Record<keyof typeof en, string> = {
   doctorLoginVerified: "已通过浏览器验证 ChatGPT 登录状态",
   doctorMacServiceLoaded: "已加载 macOS 后台服务",
   doctorMacTunnelRunning: "macOS 隧道服务已安装、加载并运行",
+  doctorErrProxyHttp: "Responses proxy returned HTTP {status}",
+  doctorErrPortConflict: "The configured port belongs to another service",
+  doctorErrModeMismatch: "Daemon is running in {running} mode; config requires {required}",
+  doctorErrVersionMismatch: "Daemon version is {running}; config requires {required}",
+  doctorErrProxyDrained: "Responses proxy is still drained and is not accepting Codex turns",
+  doctorErrProxyOwnership: "Responses proxy ownership could not be verified",
+  doctorErrProxyUnreachable: "Responses proxy is not reachable",
+  doctorErrConfigInvalid: "Configuration is invalid",
+  doctorErrBrowserUnavailable: "Embedded launcher browser is unavailable",
+  doctorErrChromeMissing: "Chrome executable is missing: {path}",
+  doctorErrLoginMissing: "ChatGPT login state is missing or unverified; run `codex-chatgpt-web login`",
+  doctorErrLoginPermissions: "ChatGPT login state is readable by other users: {path}",
+  doctorErrMarkerPermissions: "ChatGPT login verification marker is readable by other users",
+  doctorErrCodexRouteMissing: "Codex model route is not installed",
+  doctorErrCodexInconsistent: "Codex integration is inconsistent",
+  doctorErrMacServiceNotLoaded: "macOS background service is not installed and loaded",
+  doctorErrTunnelBinaryMissing: "tunnel-client is missing: {path}",
+  doctorErrTunnelKeyMissing: "Tunnel runtime key file is missing",
+  doctorErrTunnelKeyPermissions: "Tunnel runtime key file has unsafe permissions",
+  doctorErrMacTunnelNotRunning: "macOS tunnel service is not fully running",
+  doctorErrTunnelRuntimeNotReady: "Tunnel runtime is not ready",
+  doctorWarnLegacyService: "A legacy OS background service still exists; rerun launcher setup to migrate ownership",
+  doctorWarnServiceUnsupported: "Managed service is unavailable on this OS; keep `serve` running manually",
+  doctorWarnLegacyTunnelService: "A legacy OS tunnel service still exists; rerun launcher MCP setup to migrate ownership",
+  doctorWarnConnectorUnproved: "Local checks cannot prove that ChatGPT connector \"{name}\" is attached to this tunnel",
+  doctorWarnBrowserOnly: "Browser-only mode intentionally has no local tools or MCP tunnel",
+  finishActiveCodexTaskBeforeVerify: "Finish the active Codex task before verifying the ChatGPT connector",
+  shutdownAlreadyInProgress: "Launcher shutdown is already in progress",
 };
 
 const ja: Record<keyof typeof en, string> = {
@@ -595,6 +651,34 @@ const ja: Record<keyof typeof en, string> = {
   doctorLoginVerified: "ChatGPT のログイン状態はブラウザーで認証済みです",
   doctorMacServiceLoaded: "macOS バックグラウンドサービスは読み込み済みです",
   doctorMacTunnelRunning: "macOS トンネルサービスはインストール・読み込み済みで稼働中です",
+  doctorErrProxyHttp: "Responses proxy returned HTTP {status}",
+  doctorErrPortConflict: "The configured port belongs to another service",
+  doctorErrModeMismatch: "Daemon is running in {running} mode; config requires {required}",
+  doctorErrVersionMismatch: "Daemon version is {running}; config requires {required}",
+  doctorErrProxyDrained: "Responses proxy is still drained and is not accepting Codex turns",
+  doctorErrProxyOwnership: "Responses proxy ownership could not be verified",
+  doctorErrProxyUnreachable: "Responses proxy is not reachable",
+  doctorErrConfigInvalid: "Configuration is invalid",
+  doctorErrBrowserUnavailable: "Embedded launcher browser is unavailable",
+  doctorErrChromeMissing: "Chrome executable is missing: {path}",
+  doctorErrLoginMissing: "ChatGPT login state is missing or unverified; run `codex-chatgpt-web login`",
+  doctorErrLoginPermissions: "ChatGPT login state is readable by other users: {path}",
+  doctorErrMarkerPermissions: "ChatGPT login verification marker is readable by other users",
+  doctorErrCodexRouteMissing: "Codex model route is not installed",
+  doctorErrCodexInconsistent: "Codex integration is inconsistent",
+  doctorErrMacServiceNotLoaded: "macOS background service is not installed and loaded",
+  doctorErrTunnelBinaryMissing: "tunnel-client is missing: {path}",
+  doctorErrTunnelKeyMissing: "Tunnel runtime key file is missing",
+  doctorErrTunnelKeyPermissions: "Tunnel runtime key file has unsafe permissions",
+  doctorErrMacTunnelNotRunning: "macOS tunnel service is not fully running",
+  doctorErrTunnelRuntimeNotReady: "Tunnel runtime is not ready",
+  doctorWarnLegacyService: "A legacy OS background service still exists; rerun launcher setup to migrate ownership",
+  doctorWarnServiceUnsupported: "Managed service is unavailable on this OS; keep `serve` running manually",
+  doctorWarnLegacyTunnelService: "A legacy OS tunnel service still exists; rerun launcher MCP setup to migrate ownership",
+  doctorWarnConnectorUnproved: "Local checks cannot prove that ChatGPT connector \"{name}\" is attached to this tunnel",
+  doctorWarnBrowserOnly: "Browser-only mode intentionally has no local tools or MCP tunnel",
+  finishActiveCodexTaskBeforeVerify: "Finish the active Codex task before verifying the ChatGPT connector",
+  shutdownAlreadyInProgress: "Launcher shutdown is already in progress",
 };
 
 const ko: Record<keyof typeof en, string> = {
@@ -794,6 +878,34 @@ const ko: Record<keyof typeof en, string> = {
   doctorLoginVerified: "브라우저에서 ChatGPT 로그인 상태를 확인했습니다",
   doctorMacServiceLoaded: "macOS 백그라운드 서비스가 로드되어 있습니다",
   doctorMacTunnelRunning: "macOS 터널 서비스가 설치 및 로드되어 실행 중입니다",
+  doctorErrProxyHttp: "Responses 프록시가 HTTP {status} 오류를 반환했습니다",
+  doctorErrPortConflict: "설정된 포트가 다른 서비스에서 사용 중입니다",
+  doctorErrModeMismatch: "데몬이 {running} 모드로 실행 중입니다. 설정에는 {required} 모드가 필요합니다",
+  doctorErrVersionMismatch: "데몬 버전이 {running}입니다. 설정에는 {required} 버전이 필요합니다",
+  doctorErrProxyDrained: "Responses 프록시가 아직 드레인 상태여서 Codex 턴을 수락하지 않습니다",
+  doctorErrProxyOwnership: "Responses 프록시 소유권을 확인할 수 없습니다",
+  doctorErrProxyUnreachable: "Responses 프록시에 연결할 수 없습니다",
+  doctorErrConfigInvalid: "구성이 유효하지 않습니다",
+  doctorErrBrowserUnavailable: "런처 내장 브라우저를 사용할 수 없습니다",
+  doctorErrChromeMissing: "Chrome 실행 파일이 없습니다: {path}",
+  doctorErrLoginMissing: "ChatGPT 로그인 상태가 없거나 확인되지 않았습니다. `codex-chatgpt-web login`을 실행하세요",
+  doctorErrLoginPermissions: "다른 사용자가 ChatGPT 로그인 상태를 읽을 수 있습니다: {path}",
+  doctorErrMarkerPermissions: "다른 사용자가 ChatGPT 로그인 확인 마커를 읽을 수 있습니다",
+  doctorErrCodexRouteMissing: "Codex 모델 경로가 설치되어 있지 않습니다",
+  doctorErrCodexInconsistent: "Codex 통합 상태가 일치하지 않습니다",
+  doctorErrMacServiceNotLoaded: "macOS 백그라운드 서비스가 설치 및 로드되어 있지 않습니다",
+  doctorErrTunnelBinaryMissing: "tunnel-client가 없습니다: {path}",
+  doctorErrTunnelKeyMissing: "터널 런타임 키 파일이 없습니다",
+  doctorErrTunnelKeyPermissions: "터널 런타임 키 파일의 권한이 안전하지 않습니다",
+  doctorErrMacTunnelNotRunning: "macOS 터널 서비스가 완전히 실행되고 있지 않습니다",
+  doctorErrTunnelRuntimeNotReady: "터널 런타임이 준비되지 않았습니다",
+  doctorWarnLegacyService: "이전 OS 백그라운드 서비스가 여전히 존재합니다. 런처 설정을 다시 실행하여 소유권을 이전하세요",
+  doctorWarnServiceUnsupported: "이 OS에서는 관리형 서비스를 사용할 수 없습니다. `serve`를 수동으로 계속 실행하세요",
+  doctorWarnLegacyTunnelService: "이전 OS 터널 서비스가 여전히 존재합니다. 런처 MCP 설정을 다시 실행하여 소유권을 이전하세요",
+  doctorWarnConnectorUnproved: "로컬 검사로는 ChatGPT 커넥터 \"{name}\"이(가) 이 터널에 연결되어 있는지 확인할 수 없습니다",
+  doctorWarnBrowserOnly: "브라우저 전용 모드는 의도적으로 로컬 도구나 MCP 터널을 사용하지 않습니다",
+  finishActiveCodexTaskBeforeVerify: "ChatGPT 커넥터를 확인하기 전에 활성 Codex 작업을 완료하세요",
+  shutdownAlreadyInProgress: "런처 종료가 이미 진행 중입니다",
 };
 
 const zhTW: Record<keyof typeof en, string> = {
@@ -993,6 +1105,34 @@ const zhTW: Record<keyof typeof en, string> = {
   doctorLoginVerified: "已透過瀏覽器驗證 ChatGPT 登入狀態",
   doctorMacServiceLoaded: "已載入 macOS 背景服務",
   doctorMacTunnelRunning: "macOS 隧道服務已安裝、載入並執行",
+  doctorErrProxyHttp: "Responses proxy returned HTTP {status}",
+  doctorErrPortConflict: "The configured port belongs to another service",
+  doctorErrModeMismatch: "Daemon is running in {running} mode; config requires {required}",
+  doctorErrVersionMismatch: "Daemon version is {running}; config requires {required}",
+  doctorErrProxyDrained: "Responses proxy is still drained and is not accepting Codex turns",
+  doctorErrProxyOwnership: "Responses proxy ownership could not be verified",
+  doctorErrProxyUnreachable: "Responses proxy is not reachable",
+  doctorErrConfigInvalid: "Configuration is invalid",
+  doctorErrBrowserUnavailable: "Embedded launcher browser is unavailable",
+  doctorErrChromeMissing: "Chrome executable is missing: {path}",
+  doctorErrLoginMissing: "ChatGPT login state is missing or unverified; run `codex-chatgpt-web login`",
+  doctorErrLoginPermissions: "ChatGPT login state is readable by other users: {path}",
+  doctorErrMarkerPermissions: "ChatGPT login verification marker is readable by other users",
+  doctorErrCodexRouteMissing: "Codex model route is not installed",
+  doctorErrCodexInconsistent: "Codex integration is inconsistent",
+  doctorErrMacServiceNotLoaded: "macOS background service is not installed and loaded",
+  doctorErrTunnelBinaryMissing: "tunnel-client is missing: {path}",
+  doctorErrTunnelKeyMissing: "Tunnel runtime key file is missing",
+  doctorErrTunnelKeyPermissions: "Tunnel runtime key file has unsafe permissions",
+  doctorErrMacTunnelNotRunning: "macOS tunnel service is not fully running",
+  doctorErrTunnelRuntimeNotReady: "Tunnel runtime is not ready",
+  doctorWarnLegacyService: "A legacy OS background service still exists; rerun launcher setup to migrate ownership",
+  doctorWarnServiceUnsupported: "Managed service is unavailable on this OS; keep `serve` running manually",
+  doctorWarnLegacyTunnelService: "A legacy OS tunnel service still exists; rerun launcher MCP setup to migrate ownership",
+  doctorWarnConnectorUnproved: "Local checks cannot prove that ChatGPT connector \"{name}\" is attached to this tunnel",
+  doctorWarnBrowserOnly: "Browser-only mode intentionally has no local tools or MCP tunnel",
+  finishActiveCodexTaskBeforeVerify: "Finish the active Codex task before verifying the ChatGPT connector",
+  shutdownAlreadyInProgress: "Launcher shutdown is already in progress",
 };
 
 export type Copy = typeof en;
@@ -1014,40 +1154,83 @@ export function localizeRuntimeMessage(
   if (language === "en") return message;
   if (checkId === undefined && message === "Checking ChatGPT connector") return copy.checkingChatGptConnector;
   if (checkId === undefined && message === "Checking local runtime") return copy.checkingLocalRuntime;
+  if ((checkId === undefined || checkId === "connector") && message === "Finish the active Codex task before verifying the ChatGPT connector") {
+    return copy.finishActiveCodexTaskBeforeVerify;
+  }
+  if (checkId === undefined && message === "Launcher shutdown is already in progress") {
+    return copy.shutdownAlreadyInProgress;
+  }
+
   if (checkId === "config") {
     const match = /^Configuration is valid \((.+)\)$/s.exec(message);
     if (match) return copy.doctorConfigValid.replace("{path}", () => match[1]);
+    if (message === "Configuration is invalid") return copy.doctorErrConfigInvalid;
   }
   if (checkId === "browser-host") {
     const match = /^Embedded launcher browser is (authenticated and reachable|reachable for Zero Risk) \(pid (\d+)\)$/.exec(message);
     if (match) return (match[1] === "reachable for Zero Risk" ? copy.doctorManualBrowserReady : copy.doctorBrowserReady)
       .replace("{pid}", () => match[2]);
+    if (message === "Embedded launcher browser is unavailable") return copy.doctorErrBrowserUnavailable;
   }
-  if (checkId === "codex" && message === "Codex native model route is installed") return copy.doctorCodexInstalled;
-  if (checkId === "service" && message === "Launcher owns the background runtime") return copy.doctorRuntimeOwned;
-  if (checkId === "service" && message === "macOS background service is loaded") return copy.doctorMacServiceLoaded;
+  if (checkId === "codex") {
+    if (message === "Codex native model route is installed") return copy.doctorCodexInstalled;
+    if (message === "Codex model route is not installed") return copy.doctorErrCodexRouteMissing;
+    if (message === "Codex integration is inconsistent") return copy.doctorErrCodexInconsistent;
+  }
+  if (checkId === "service") {
+    if (message === "Launcher owns the background runtime") return copy.doctorRuntimeOwned;
+    if (message === "macOS background service is loaded") return copy.doctorMacServiceLoaded;
+    if (message === "macOS background service is not installed and loaded") return copy.doctorErrMacServiceNotLoaded;
+    if (message === "A legacy OS background service still exists; rerun launcher setup to migrate ownership") return copy.doctorWarnLegacyService;
+    if (message === "Managed service is unavailable on this OS; keep `serve` running manually") return copy.doctorWarnServiceUnsupported;
+  }
   if (checkId === "chrome") {
-    const match = /^Chrome executable found: (.+)$/s.exec(message);
-    if (match) return copy.doctorChromeFound.replace("{path}", () => match[1]);
+    const foundMatch = /^Chrome executable found: (.+)$/s.exec(message);
+    if (foundMatch) return copy.doctorChromeFound.replace("{path}", () => foundMatch[1]);
+    const missingMatch = /^Chrome executable is missing: (.+)$/s.exec(message);
+    if (missingMatch) return copy.doctorErrChromeMissing.replace("{path}", () => missingMatch[1]);
   }
-  if (checkId === "login" && message === "ChatGPT login state has authenticated browser evidence") return copy.doctorLoginVerified;
-  if (checkId === "tunnel-service" && message === "macOS tunnel service is installed, loaded, and running") return copy.doctorMacTunnelRunning;
+  if (checkId === "login") {
+    if (message === "ChatGPT login state has authenticated browser evidence") return copy.doctorLoginVerified;
+    if (message === "ChatGPT login state is missing or unverified; run `codex-chatgpt-web login`") return copy.doctorErrLoginMissing;
+    const readMatch = /^ChatGPT login state is readable by other users: (.+)$/s.exec(message);
+    if (readMatch) return copy.doctorErrLoginPermissions.replace("{path}", () => readMatch[1]);
+    if (message === "ChatGPT login verification marker is readable by other users") return copy.doctorErrMarkerPermissions;
+  }
+  if (checkId === "tunnel-service") {
+    if (message === "Launcher owns the tunnel runtime") return copy.doctorTunnelRuntimeOwned;
+    if (message === "macOS tunnel service is installed, loaded, and running") return copy.doctorMacTunnelRunning;
+    if (message === "macOS tunnel service is not fully running") return copy.doctorErrMacTunnelNotRunning;
+    if (message === "A legacy OS tunnel service still exists; rerun launcher MCP setup to migrate ownership") return copy.doctorWarnLegacyTunnelService;
+  }
 
   if (checkId === "proxy") {
-    const match = /^Responses proxy is healthy on (127\.0\.0\.1:\d+)$/.exec(message);
-    if (match) return copy.doctorProxyHealthy.replace("{endpoint}", () => match[1]);
+    const healthyMatch = /^Responses proxy is healthy on (127\.0\.0\.1:\d+)$/.exec(message);
+    if (healthyMatch) return copy.doctorProxyHealthy.replace("{endpoint}", () => healthyMatch[1]);
+    const httpMatch = /^Responses proxy returned HTTP (\d+)$/.exec(message);
+    if (httpMatch) return copy.doctorErrProxyHttp.replace("{status}", () => httpMatch[1]);
+    if (message === "The configured port belongs to another service") return copy.doctorErrPortConflict;
+    const modeMatch = /^Daemon is running in (.+) mode; config requires (.+)$/.exec(message);
+    if (modeMatch) return copy.doctorErrModeMismatch.replace("{running}", () => modeMatch[1]).replace("{required}", () => modeMatch[2]);
+    const verMatch = /^Daemon version is (.+); config requires (.+)$/.exec(message);
+    if (verMatch) return copy.doctorErrVersionMismatch.replace("{running}", () => verMatch[1]).replace("{required}", () => verMatch[2]);
+    if (message === "Responses proxy is still drained and is not accepting Codex turns") return copy.doctorErrProxyDrained;
+    if (message === "Responses proxy ownership could not be verified") return copy.doctorErrProxyOwnership;
+    if (message === "Responses proxy is not reachable") return copy.doctorErrProxyUnreachable;
   }
-  if (checkId === "tunnel-binary" && message === "Pinned openai/tunnel-client binary is installed") {
-    return copy.doctorTunnelBinaryInstalled;
+  if (checkId === "tunnel-binary") {
+    if (message === "Pinned openai/tunnel-client binary is installed") return copy.doctorTunnelBinaryInstalled;
+    const missingMatch = /^tunnel-client is missing: (.+)$/s.exec(message);
+    if (missingMatch) return copy.doctorErrTunnelBinaryMissing.replace("{path}", () => missingMatch[1]);
   }
-  if (checkId === "tunnel-key" && message === "Tunnel runtime key is stored privately") {
-    return copy.doctorTunnelKeyStored;
+  if (checkId === "tunnel-key") {
+    if (message === "Tunnel runtime key is stored privately") return copy.doctorTunnelKeyStored;
+    if (message === "Tunnel runtime key file is missing") return copy.doctorErrTunnelKeyMissing;
+    if (message === "Tunnel runtime key file has unsafe permissions") return copy.doctorErrTunnelKeyPermissions;
   }
-  if (checkId === "tunnel-service" && message === "Launcher owns the tunnel runtime") {
-    return copy.doctorTunnelRuntimeOwned;
-  }
-  if (checkId === "tunnel-runtime" && message === "Tunnel runtime reports healthy and ready") {
-    return copy.doctorTunnelRuntimeReady;
+  if (checkId === "tunnel-runtime") {
+    if (message === "Tunnel runtime reports healthy and ready") return copy.doctorTunnelRuntimeReady;
+    if (message === "Tunnel runtime is not ready") return copy.doctorErrTunnelRuntimeNotReady;
   }
   if (checkId === "connector") {
     const match = /^ChatGPT connector (".*") is available$/s.exec(message);
@@ -1061,6 +1244,20 @@ export function localizeRuntimeMessage(
         return message;
       }
     }
+    const warnMatch = /^Local checks cannot prove that ChatGPT connector (".*") is attached to this tunnel$/s.exec(message);
+    if (warnMatch) {
+      try {
+        const connectorName = JSON.parse(warnMatch[1]);
+        if (typeof connectorName === "string") {
+          return copy.doctorWarnConnectorUnproved.replace("{name}", () => connectorName);
+        }
+      } catch {
+        return message;
+      }
+    }
+  }
+  if (checkId === "tools") {
+    if (message === "Browser-only mode intentionally has no local tools or MCP tunnel") return copy.doctorWarnBrowserOnly;
   }
   return message;
 }

@@ -1,52 +1,29 @@
-# Contributing
+# 기여 안내
 
-Codex Web GPT was created and is primarily developed and maintained by
-[@miuuyy](https://github.com/miuuyy). Product direction, core architecture, and release decisions
-remain with the creator. Other contributors listed by GitHub have provided focused external fixes
-rather than shared product or architectural ownership.
+Codex Web GPT는 [@miuuyy](https://github.com/miuuyy)가 제작하였으며 주로 유지 관리하고 있습니다. 제품 방향, 핵심 아키텍처 및 릴리스 결정은 제작자에게 있습니다. GitHub에 나열된 다른 기여자는 공유된 제품 또는 아키텍처 소유권보다는 집중적인 외부 수정을 제공했습니다.
 
-External contributions are welcome, but this is an intentionally maintainer-led project. Pull
-requests are expected to be small, focused, and easy to review and verify. Good contributions
-include isolated bug fixes, regression tests, documentation corrections, and narrow
-platform-specific fixes.
+외부 기여는 환영하지만, 이는 의도적으로 유지관리자가 주도하는 프로젝트입니다. 풀 리퀘스트는 작고 집중적이며 검토 및 검증이 용이해야 합니다. 좋은 기여로는 격리된 버그 수정, 회귀 테스트, 문서 수정 및 제한적인 플랫폼별 수정이 포함됩니다.
 
-Before opening a bug report, work through [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and use the
-structured issue form. Reproduce once on the latest release and attach the privacy-safe export from
-**Activity → Export safe log**; never upload raw browser state, credentials, or unredacted logs.
+버그 리포트를 등록하기 전에 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)를 확인하고 정형화된 이슈 양식을 사용하세요. 최신 릴리스에서 한 번 재현하고 **Activity → Export safe log**에서 내보낸 개인정보 보호 사본을 첨부하세요. 원시 브라우저 상태, 자격 증명 또는 비식별화되지 않은 로그는 절대로 업로드하지 마세요.
 
-Large feature branches, broad refactors, rewrites, new providers, and changes to core behavior or
-architecture are generally not accepted. In rare cases they may be considered, but discuss the
-proposal in an issue before implementation. Prior discussion does not guarantee acceptance, and a
-large unsolicited pull request may be closed even when substantial work went into it.
+대규모 기능 브랜치, 광범위한 리팩터링, 재작성, 새로운 프로바이더 및 핵심 동작이나 아키텍처의 변경은 일반적으로 허용되지 않습니다. 드문 경우에 고려될 수 있으나 구현 전에 이슈에서 제안을 먼저 논의하세요. 사전 논의가 승인을 보장하지는 않으며, 요청되지 않은 대규모 풀 리퀘스트는 상당한 작업이 투입되었더라도 닫힐 수 있습니다.
 
-## Scope and invariants
+## 범위 및 불변 조건
 
-- Keep the project focused on ChatGPT web-backed Codex models. Generic providers and unrelated
-  product surfaces are out of scope.
-- Model selection is explicit. Never silently fall back to another model or reasoning level.
-- Full mode exposes local tools only through the active outer Codex registry and official MCP
-  tunnel. Browser-only mode must not create a broker capability or attach an MCP connector.
-- Every available ChatGPT Web effort has the same turn-bound MCP capability in Full mode. Do not
-  add effort-specific MCP exclusions.
-- Preserve fail-closed behavior. A selector or protocol failure must return an explicit error, not
-  pick another option or claim success.
-- Never commit browser state, cookies, API keys, tunnel IDs, Codex history, generated logs, or
-  absolute user paths.
+- 프로젝트를 ChatGPT 웹 기반 Codex 모델에 집중하세요. 일반적인 프로바이더 및 관련 없는 제품 표면은 범위 밖입니다.
+- 모델 선택은 명시적이어야 합니다. 다른 모델이나 추론 수준으로 조용히 대체하지 마세요.
+- Full 모드는 활성 외부 Codex 레지스트리와 공식 MCP 터널을 통해서만 로컬 도구를 노출합니다. Browser-only 모드는 브로커 기능을 만들거나 MCP 커넥터를 연결해서는 안 됩니다.
+- 사용 가능한 모든 ChatGPT Web effort는 Full 모드에서 동일한 턴 바인딩 MCP 기능을 갖습니다. 특정 effort 전용 MCP 제외를 추가하지 마세요.
+- 실패 시 안전(fail-closed) 동작을 유지하세요. 셀렉터 또는 프로토콜 실패는 다른 옵션을 선택하거나 성공을 주장하지 않고 명시적인 오류를 반환해야 합니다.
+- 브라우저 상태, 쿠키, API 키, 터널 ID, Codex 기록, 생성된 로그 또는 절대 사용자 경로를 커밋하지 마세요.
 
-## Before opening a pull request
+## 풀 리퀘스트 등록 전 확인 사항
 
-1. Run `bun install --frozen-lockfile` in the repository root and in `launcher/`.
-2. Run `bun run verify`.
-3. Add a focused regression test for behavior changes.
-4. For browser UI changes, include the observed DOM evidence and a reproducible fixture. Do not
-   broaden selectors speculatively.
-5. Keep Terms and trademark claims factual. Do not market the project as a quota or rate-limit
-   bypass.
-6. Manually test the affected behavior. DEV mode is sufficient only when the change does not affect
-   local-tool execution, MCP execution, or the outer Codex agent loop. Execution changes require a
-   real installed Codex integration; DEV simulation is not end-to-end acceptance evidence.
+1. 저장소 루트와 `launcher/`에서 `bun install --frozen-lockfile`을 실행합니다.
+2. `bun run verify`를 실행합니다.
+3. 동작 변경에 대한 집중적인 회귀 테스트를 추가합니다.
+4. 브라우저 UI 변경의 경우 관찰된 DOM 증거와 재현 가능한 픽스처를 포함합니다. 셀렉터를 추측으로 넓히지 마세요.
+5. 약관 및 상표 주장은 사실에 근거해야 합니다. 이 프로젝트를 할당량이나 속도 제한 우회로 마케팅하지 마세요.
+6. 영향을 받는 동작을 수동으로 테스트합니다. DEV 모드는 변경 사항이 로컬 도구 실행, MCP 실행 또는 외부 Codex 에이전트 루프에 영향을 미치지 않는 경우에만 충분합니다. 실행 변경에는 실제 설치된 Codex 통합이 필요하며, DEV 시뮬레이션은 엔드투엔드 승인 증거가 아닙니다.
 
-Launcher changes must preserve native packaging on macOS, Windows, and Linux. Platform packages
-must be built on their matching operating system. See [DEV chat mode](docs/dev-chat.md) for isolated
-browser and MCP development, and [release validation](docs/release-validation.md) for the required
-account-bound release checks.
+런처 변경은 macOS, Windows 및 Linux에서 네이티브 패키징을 유지해야 합니다. 플랫폼 패키지는 일치하는 운영체제에서 빌드되어야 합니다. 격리된 브라우저 및 MCP 개발은 [DEV chat mode](docs/dev-chat.md)를, 필요한 계정 바인딩 릴리스 확인은 [release validation](docs/release-validation.md)을 참조하세요.

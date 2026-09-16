@@ -1,238 +1,100 @@
-# Architecture
+# 아키텍처
 
 ```text
 Codex app / CLI
-      │ Responses API on loopback
+      │ 루프백 상의 Responses API
       ▼
-launcher-owned codex-chatgpt-web daemon
-  ├─ official /models passthrough + fixed ChatGPT Web models
-  ├─ native Responses passthrough or ChatGPT Responses/SSE bridge
-  ├─ authenticated native Search and Image Gen request forwarding
-  ├─ ChatGPT browser worker (up to five task-bound Electron tabs)
-  ├─ capability broker (full mode only)
-  └─ stdio MCP server
+런처가 소유한 codex-chatgpt-web 데몬
+  ├─ 공식 /models 패스스루 + 고정된 ChatGPT Web 모델
+  ├─ 네이티브 Responses 패스스루 또는 ChatGPT Responses/SSE 브리지
+  ├─ 인증된 네이티브 Search 및 Image Gen 요청 전달
+  ├─ ChatGPT 브라우저 워커 (최대 5개의 작업 바인딩 Electron 탭)
+  ├─ 기능 브로커 (Full 모드 전용)
+  └─ stdio MCP 서버
             ▲
-            │ outbound OpenAI Tunnel
+            │ 아웃바운드 OpenAI Tunnel
             ▼
-      ChatGPT custom connector
+      ChatGPT 커스텀 커넥터
 ```
 
-## Modes
+## 모드
 
 ### `browser-only`
 
-- Exposes Instant (`chatgpt-web/light`), Medium, High, and Extra High; each model advertises exactly one
-  immutable Codex effort matching its ChatGPT browser mode. `chatgpt-web/pro` is appended only when
-  the authenticated account exposes Pro.
-- Sends the complete Codex context and image attachments to a fresh ChatGPT Temporary Chat.
-- Never starts the broker, tunnel, or MCP server.
-- Emits a nonfatal Codex commentary warning that local tools are unavailable for the selected model.
+- Instant (`chatgpt-web/light`), Medium, High, Extra High를 노출합니다. 각 모델은 ChatGPT 브라우저 모드와 일치하는 변경 불가능한 단 하나의 Codex effort를 제공합니다. `chatgpt-web/pro`는 인증된 계정이 Pro를 지원할 때만 추가됩니다.
+- 완전한 Codex 컨텍스트와 이미지 첨부 파일을 새로운 ChatGPT Temporary Chat으로 전송합니다.
+- 브로커, 터널 또는 MCP 서버를 시작하지 않습니다.
+- 선택한 모델에 대해 로컬 도구를 사용할 수 없다는 치명적이지 않은 Codex 설명(commentary) 경고를 방출합니다.
 
 ### `full`
 
-- Exposes the same fixed models and attaches the turn-bound connector capability to every available
-  effort, from Luna through Pro. There are no effort-specific MCP exclusions.
-- ChatGPT uses a custom MCP connector backed by `openai/tunnel-client`.
-- Every connector call presents one outer Codex turn capability; the MCP server keeps the derived
-  binding private and dispatches the requested action immediately.
-- When Codex exposes tools behind its code-mode `exec` gateway, the connector discovers their
-  runtime registry and can invoke an exact listed name through bridge-owned code. Full mode also
-  preserves Codex's native freeform `exec`; its tool registry enforces the same bounded
-  `wait_agent` contract as direct and structured calls.
-- Tool calls and results remain in the same ChatGPT response while Codex executes them locally.
+- 동일한 고정 모델을 노출하며, Luna부터 Pro까지 사용 가능한 모든 effort에 턴 바인딩된 커넥터 기능을 연결합니다. effort별 MCP 제외는 없습니다.
+- ChatGPT는 `openai/tunnel-client` 기반의 커스텀 MCP 커넥터를 사용합니다.
+- 모든 커넥터 호출은 하나의 외부 Codex 턴 기능을 제시합니다. MCP 서버는 파생된 바인딩을 비공개로 유지하고 요청된 작업을 즉시 디스패치합니다.
+- Codex가 코드 모드 `exec` 게이트웨이 뒤에 도구를 노출할 때 커넥터는 런타임 레지스트리를 발견하고 브리지 소유 코드를 통해 정확히 나열된 이름을 호출할 수 있습니다. Full 모드는 Codex의 네이티브 자유형 `exec`도 보존합니다. 도구 레지스트리는 직접 호출 및 구조화된 호출과 동일한 제한된 `wait_agent` 계약을 적용합니다.
+- Codex가 로컬에서 도구를 실행하는 동안 도구 호출과 결과는 동일한 ChatGPT 응답에 유지됩니다.
 
-### Repository DEV driver
+### 저장소 DEV 드라이버
 
-The DEV chat is not another provider or browser implementation. It is a synthetic outer-Codex
-driver around the same in-process Responses handlers. `dev launcher` starts the packaged launcher
-with an explicit `development` profile. That profile has a different core home, sandboxed
-`CODEX_HOME`, Electron `userData`, persistent browser partition, descriptor, cookie jar, login,
-configuration, chat store, diagnostic store, broker path, tunnel profile, and alias. The normal and
-DEV launchers can therefore run at the same time with different ChatGPT accounts.
+DEV 채팅은 또 다른 프로바이더나 브라우저 구현이 아닙니다. 동일한 프로세스 내 Responses 핸들러를 둘러싼 합성 외부 Codex 드라이버입니다. `dev launcher`는 명시적인 `development` 프로필로 패키징된 런처를 시작합니다. 해당 프로필은 별도의 코어 홈, 샌드박스된 `CODEX_HOME`, Electron `userData`, 영구 브라우저 파티션, 디스크립터, 쿠키 저장소, 로그인, 구성, 채팅 저장소, 진단 저장소, 브로커 경로, 터널 프로필 및 별칭을 갖습니다. 따라서 일반 런처와 DEV 런처는 서로 다른 ChatGPT 계정으로 동시에 실행될 수 있습니다.
 
-The working-tree adapter attaches to a tab leased only from that DEV launcher. In Full mode the DEV
-launcher owns one persistent, isolated tunnel runtime; a named CLI chat owns only the private turn
-broker attached to that tunnel for the command's lifetime. The distinct `Codex Native2 DEV`
-connector reaches the same MCP server and turn-token contract without requiring any Responses
-daemon or colliding with the production `Codex Native2` connector.
+작업 트리 어댑터는 해당 DEV 런처에서 임대한 탭에만 연결됩니다. Full 모드에서 DEV 런처는 하나의 영구적이고 격리된 터널 런타임을 소유합니다. 명명된 CLI 채팅은 명령 수명 동안 해당 터널에 연결된 비공개 턴 브로커만 소유합니다. 별도의 `Codex Native2 DEV` 커넥터는 Responses 데몬이 필요 없거나 프로덕션 `Codex Native2` 커넥터와 충돌하지 않고 동일한 MCP 서버 및 턴 토큰 계약에 도달합니다.
 
-Only the responsibilities normally owned by native Codex are synthetic: named history storage,
-turn metadata, tool-result execution, context-threshold scheduling, and installation of compacted
-replacement history. Every tool result is an explicit `simulated: true` receipt with
-`side_effects_performed: false`; no semantic router guesses a command result.
+명명된 기록 저장소, 턴 메타데이터, 도구 결과 실행, 컨텍스트 임계값 스케줄링, 압축된 대체 기록 설치와 같이 기본적으로 네이티브 Codex가 소유하는 책임만 합성됩니다. 모든 도구 결과는 `side_effects_performed: false`인 명시적 `simulated: true` 영수증입니다. 시맨틱 라우터가 명령 결과를 추측하지 않습니다.
 
-The driver calls `responseRequest` and `compactRequest` directly. It starts no HTTP server, does not
-read or write Codex's route journal or `config.toml`, and does not stop or replace the normal
-launcher-owned daemon. A `dev-harness` discriminator prevents the Responses server and production
-launcher from starting a Responses daemon for its config. DEV setup stores browser capabilities
-and tunnel credentials but performs no Codex integration, system service installation, or port
-probe. The DEV launcher supervisor owns only the isolated MCP tunnel. Browser diagnostics, broker
-state, thread authority, checkpoints, and named chat state live
-under `~/.codex-chatgpt-web-dev` by default.
+드라이버는 `responseRequest`와 `compactRequest`를 직접 호출합니다. HTTP 서버를 시작하지 않고, Codex의 라우트 저널이나 `config.toml`을 읽거나 쓰지 않으며, 일반 런처가 소유한 데몬을 중지하거나 교체하지 않습니다. `dev-harness` 판별자는 Responses 서버와 프로덕션 런처가 해당 구성에 대해 Responses 데몬을 시작하는 것을 방지합니다. DEV 설정은 브라우저 기능과 터널 자격 증명을 저장하지만 Codex 통합, 시스템 서비스 설치 또는 포트 프로브는 수행하지 않습니다. DEV 런처 수퍼바이저는 격리된 MCP 터널만 소유합니다. 브라우저 진단, 브로커 상태, 스레드 권한, 체크포인트 및 명명된 채팅 상태는 기본적으로 `~/.codex-chatgpt-web-dev` 아래에 저장됩니다.
 
-The ChatGPT connector name is also the public MCP ABI identity. The direct turn-token contract uses
-`Codex Native2`; the retired `Codex Native` identity is never selected or refreshed in place. Setup
-migrates known legacy local configuration to the new name, clears prior verification state, and
-requires the user to create the new connector. Browser verification accepts the exact new identity,
-reports a specific migration error when only the legacy identity is visible, and never falls back to
-the legacy connector. Future public schema changes require another explicit connector identity.
-Repository DEV mode uses `Codex Native2 DEV` so the same ChatGPT account can keep both production
-and development connectors installed without renaming, refreshing, or deleting either one.
+ChatGPT 커넥터 이름은 공개 MCP ABI 식별자이기도 합니다. 직접 턴 토큰 계약은 `Codex Native2`를 사용합니다. 사용 중단된 `Codex Native` 식별자는 제자리에서 선택되거나 새로고침되지 않습니다. 설정은 알려진 기존 로컬 구성을 새 이름으로 마이그레이션하고 이전 확인 상태를 지우며 사용자가 새 커넥터를 만들도록 요구합니다. 브라우저 확인은 정확한 새 식별자를 수락하고, 기존 식별자만 표시될 때 특정 마이그레이션 오류를 보고하며, 기존 커넥터로 절대 대체되지 않습니다. 향후 공개 스키마 변경에는 다른 명시적 커넥터 식별자가 필요합니다. 저장소 DEV 모드는 `Codex Native2 DEV`를 사용하므로 동일한 ChatGPT 계정에서 둘 중 하나를 바꾸거나 새로고침하거나 삭제하지 않고도 프로덕션 커넥터와 개발 커넥터를 모두 설치된 상태로 유지할 수 있습니다.
 
-## Browser lifecycle
+## 브라우저 수명주기
 
-The desktop launcher owns one persistent Electron partition and up to five task-bound browser
-tabs. Each task/model/effort/compaction epoch owns one exact `WebContentsView` lease; sequential
-native messages reuse that surface, while each message receives a fresh turn-bound MCP token and
-keeps all of its MCP tool rounds inside one ChatGPT response. Compaction asks the same retained Web
-agent for a one-shot structured checkpoint, waits for the response and physical helper cleanup,
-then closes the old surface. The next epoch gets a new Temporary Chat. Model messages never copy
-state between tabs. Tabs share only the local login
-partition and keep independent documents and lifecycles. Closing a running tab destroys its page
-and terminates that browser turn. A sixth concurrent turn fails explicitly; the cap avoids excessive
-parallel traffic that could trigger account abuse controls.
+데스크톱 런처는 하나의 영구 Electron 파티션과 최대 5개의 작업 바인딩 브라우저 탭을 소유합니다. 각 작업/모델/effort/컴팩션 에포크는 정확히 하나의 `WebContentsView` 리스를 소유합니다. 순차적인 기본 메시지는 해당 표면을 재사용하는 반면, 각 메시지는 새로운 턴 바인딩 MCP 토큰을 수신하고 하나의 ChatGPT 응답 내에서 모든 MCP 도구 라운드를 유지합니다. 컴팩션은 동일하게 유지된 웹 에이전트에 단발성 구조화 체크포인트를 요청하고, 응답 및 물리적 헬퍼 정리를 기다린 다음 이전 표면을 닫습니다. 다음 에포크는 새로운 Temporary Chat을 가져옵니다. 모델 메시지는 탭 간에 상태를 복사하지 않습니다. 탭은 로컬 로그인 파티션만 공유하고 독립적인 문서와 수명주기를 유지합니다. 실행 중인 탭을 닫으면 페이지가 파괴되고 해당 브라우저 턴이 종료됩니다. 6번째 동시 턴은 명시적으로 실패합니다. 이 제한은 계정 악용 제어를 트리거할 수 있는 과도한 병렬 트래픽을 방지합니다.
 
-Browser submission and response binding use ChatGPT's logical `data-turn-id`, not the
-`conversation-turn-N` display index, which can change during rendering. The submission baseline
-includes the persistent `data-turn-id-container` wrappers of virtualized history. Remounting old
-messages therefore cannot count as a new submission or another user's turn. Missing or duplicate
-logical identities fail explicitly; accepted messages are never resent to repair their DOM.
+브라우저 제출 및 응답 바인딩은 렌더링 중에 변경될 수 있는 `conversation-turn-N` 표시 인덱스가 아니라 ChatGPT의 논리적 `data-turn-id`를 사용합니다. 제출 기준선에는 가상화된 기록의 영구 `data-turn-id-container` 래퍼가 포함됩니다. 따라서 이전 메시지를 다시 마운트해도 새 제출이나 다른 사용자의 턴으로 계산되지 않습니다. 누락되거나 중복된 논리적 식별자는 명시적으로 실패합니다. 수락된 메시지는 DOM을 복구하기 위해 다시 전송되지 않습니다.
 
-Sign-in uses that same persistent Electron partition. ChatGPT login pages and allowed identity-
-provider popups are adopted into a temporary `WebContentsView` inside the launcher instead of being
-redirected to another browser. After the provider returns to ChatGPT, the launcher requires both a
-server-authenticated session and the Temporary Chat composer in the primary owned view, then closes
-the temporary auth view. There is no browser-profile handoff, cookie import, CDP login port, or
-temporary session-transfer directory.
+로그인은 동일한 영구 Electron 파티션을 사용합니다. ChatGPT 로그인 페이지 및 허용된 ID 프로바이더 팝업은 다른 브라우저로 리디렉션되는 대신 런처 내부의 임시 `WebContentsView`로 수용됩니다. 프로바이더가 ChatGPT로 돌아온 후 런처는 기본 소유 뷰에서 서버 인증 세션과 Temporary Chat 입력창을 모두 요구한 다음 임시 인증 뷰를 닫습니다. 브라우저 프로필 전달, 쿠키 가져오기, CDP 로그인 포트 또는 임시 세션 전송 디렉터리는 없습니다.
 
-The current compiled Codex task context is inserted as one inline JSON envelope. Image bytes stay
-out of the JSON and are attached natively with stable references. The runtime does not create a
-context JSONL file, upload a synthetic context document, include prompt hashes, or silently truncate
-the envelope. Attachment acceptance and send readiness are verified before the turn begins.
+현재 컴파일된 Codex 작업 컨텍스트는 하나의 인라인 JSON envelope으로 삽입됩니다. 이미지 바이트는 JSON 외부에 유지되며 안정적인 참조와 함께 기본적으로 첨부됩니다. 런타임은 컨텍스트 JSONL 파일을 생성하거나, 합성 컨텍스트 문서를 업로드하거나, 프롬프트 해시를 포함하거나, envelope을 자동으로 자르지 않습니다. 턴이 시작되기 전에 첨부 파일 수락 및 전송 준비 상태가 확인됩니다.
 
-Initial Launcher setup asks which interaction mode to install and defaults to With Automation. The
-same choice remains available in Settings; changing it uses the transactional setup path, replaces
-the installed catalog, and requires a Codex restart. Zero Risk never reads or mutates the ChatGPT DOM.
-For a new ChatGPT chat the adapter provides the complete compiled prompt; for an exactly retained
-chat it also provides an incremental prompt containing only the Codex suffix after the last assistant
-reply. The Launcher chooses between those two prompts from its own retained-tab ownership and writes
-the selected text to the system clipboard. The user has thirty seconds to paste, select the visible
-ChatGPT model, effort, and Zero Risk connector, send, and confirm Sent; a manual compaction handoff
-allows two minutes. Sent ends that confirmation deadline. Waiting for the first MCP bind is part of
-the live turn, which remains subject to explicit cancellation and runtime-owner cleanup.
-The pasted task carries one opaque `request_id` for routing concurrent requests. Start/completion
-sequencing lives in the Zero Risk MCP server metadata, not in user-authored imperative text; the
-per-tab nonce used to validate the Launcher confirmation never leaves the local runtime.
+초기 런처 설정은 설치할 상호작용 모드를 묻고 With Automation을 기본값으로 설정합니다. 동일한 선택이 설정에서 계속 제공됩니다. 이를 변경하면 트랜잭션 설정 경로가 사용되고 설치된 카탈로그가 교체되며 Codex 재시작이 필요합니다. Zero Risk는 ChatGPT DOM을 절대 읽거나 변경하지 않습니다. 새로운 ChatGPT 채팅의 경우 어댑터는 완전한 컴파일된 프롬프트를 제공합니다. 정확하게 유지된 채팅의 경우 마지막 어시스턴트 응답 이후의 Codex 접미사만 포함하는 증분 프롬프트도 제공합니다. 런처는 자체 유지 탭 소유권에서 이 두 프롬프트 중에서 선택하고 선택한 텍스트를 시스템 클립보드에 씁니다. 사용자는 30초 동안 붙여넣고, 표시되는 ChatGPT 모델, effort 및 Zero Risk 커넥터를 선택하고, 전송하고, Sent를 확인해야 합니다. 수동 컴팩션 인수인계에는 2분이 허용됩니다. Sent는 해당 확인 기한을 종료합니다. 첫 번째 MCP 바인딩을 기다리는 것은 라이브 턴의 일부이며, 명시적 취소 및 런타임 소유자 정리가 계속 적용됩니다. 붙여넣은 작업은 동시 요청 라우팅을 위해 하나의 불투명한 `request_id`를 전달합니다. 시작/완료 시퀀싱은 사용자가 작성한 명령형 텍스트가 아니라 Zero Risk MCP 서버 메타데이터에 있습니다. 런처 확인을 검증하는 데 사용되는 탭별 nonce는 로컬 런타임을 절대 벗어나지 않습니다.
 
-The appended models advertise the authenticated account's context window and a ten-percent
-auto-compaction reserve. Usage is counted with the GPT-5 tokenizer plus fixed platform/image
-reserves, rather than inferred from character length. The ChatGPT composer also has an independent
-inline-size boundary: usage accounting asks Codex to compact before that boundary, and a prompt
-that still exceeds the proven hard ceiling fails explicitly before any browser turn opens.
-Top-level `model_context_window` raises only the proxied native rows' advertised maximum, allowing
-Codex to apply its own configured context override without clamping. Routed ChatGPT Web models
-retain their measured adapter-owned limits.
+추가된 모델은 인증된 계정의 컨텍스트 창과 10% 자동 컴팩션 예비 공간을 제공합니다. 사용량은 문자 길이에서 유추하는 대신 GPT-5 토크나이저와 고정된 플랫폼/이미지 예비 공간을 더해 계산됩니다. ChatGPT 입력창에는 독립적인 인라인 크기 경계도 있습니다. 사용량 정산은 해당 경계 전에 Codex에 컴팩션을 요청하며, 입증된 하드 한도를 여전히 초과하는 프롬프트는 브라우저 턴이 열리기 전에 명시적으로 실패합니다. 최상위 `model_context_window`는 프록시된 기본 행의 공지 최대값만 높이므로 Codex가 클램핑 없이 자체 구성된 컨텍스트 override를 적용할 수 있습니다. 라우팅된 ChatGPT Web 모델은 측정된 어댑터 소유 한도를 유지합니다.
 
-Bigger Context partitions complete ordered records against each message's available token and
-composer budgets. Inert stages carry text; the final message also carries all retained attachments,
-the execution contract and any output schema. Their reserves are deducted before partitioning,
-then preflight checks the actual compiled messages and total transaction. The selected execution
-effort, attachment references and three-part maximum remain unchanged.
+Bigger Context는 각 메시지의 사용 가능한 토큰 및 입력창 예산에 맞춰 완전한 순서화된 레코드를 분할합니다. 비활성 단계는 텍스트를 전달합니다. 최종 메시지는 유지된 모든 첨부 파일, 실행 계약 및 모든 출력 스키마도 전달합니다. 이들의 예비 공간은 분할 전에 차감된 다음 프리플라이트에서 실제 컴파일된 메시지와 총 트랜잭션을 확인합니다. 선택한 실행 effort, 첨부 파일 참조 및 3부 최대값은 변경되지 않습니다.
 
-In Full mode, routed compaction v1/v2 uses the exact retained source agent and a one-shot MCP control
-capability that accepts only the bound checkpoint; it cannot claim or invoke the ordinary Codex tool
-environment. Zero Risk always advertises a fixed three-times compaction interval without enabling
-Bigger Context multipart transport. At that boundary its active ChatGPT response receives the
-checkpoint instruction as an MCP result, returns the compacted context through its bound completion
-control, and ends. The old manual chat is retired; the next compacted Codex request owns a fresh
-Temporary Chat and its locally compiled prompt is copied to the clipboard. A missing Automatic
-retained source falls back to a dedicated read-only Temporary Chat built from canonical Codex
-history; a missing Zero Risk source uses the same explicit manual checkpoint contract. An invalid or
-ambiguous handoff still fails explicitly. Browser-only mode
-uses the same read-only summarization path, then returns the native replacement-history shape expected
-by Codex. A prompt-level checkpoint marker is translated into a visible Codex trace item;
-every later tool action in the same turn continues to present the current turn capability. Visible
-ChatGPT status rows become reasoning summaries, while stable prose between rows becomes native
-Codex commentary.
+Full 모드에서 라우팅된 컴팩션 v1/v2는 정확히 유지된 소스 에이전트와 바인딩된 체크포인트만 수락하는 단발성 MCP 제어 기능을 사용합니다. 일반 Codex 도구 환경을 요구하거나 호출할 수 없습니다. Zero Risk는 Bigger Context 멀티파트 전송을 활성화하지 않고 항상 고정된 3배 컴팩션 간격을 광고합니다. 해당 경계에서 활성 ChatGPT 응답은 체크포인트 지침을 MCP 결과로 수신하고 바인딩된 완료 컨트롤을 통해 압축된 컨텍스트를 반환한 후 종료됩니다. 이전 수동 채팅은 폐기됩니다. 다음 압축된 Codex 요청은 새로운 Temporary Chat을 소유하고 로컬에서 컴파일된 프롬프트가 클립보드에 복사됩니다. 누락된 Automatic 유지 소스는 정규 Codex 기록으로 빌드된 전용 읽기 전용 Temporary Chat으로 대체됩니다. 누락된 Zero Risk 소스는 동일한 명시적 수동 체크포인트 계약을 사용합니다. 유효하지 않거나 모호한 인수인계는 여전히 명시적으로 실패합니다. Browser-only 모드는 동일한 읽기 전용 요약 경로를 사용한 다음 Codex에서 예상하는 기본 대체 기록 형식을 반환합니다. 프롬프트 수준 체크포인트 마커는 가시적인 Codex 추적 항목으로 변환됩니다. 동일한 턴의 모든 이후 도구 작업은 현재 턴 기능을 계속 제시합니다. 가시적인 ChatGPT 상태 행은 추론 요약이 되고 행 사이의 안정적인 텍스트는 기본 Codex 설명이 됩니다.
 
-## Installation and service lifecycle
+## 설치 및 서비스 수명주기
 
-Each native desktop package contains Electron, a platform-matched pinned Bun executable, the
-Responses bridge, Playwright client code, MCP server, setup, doctor, and the browser helper.
-Browser-only mode downloads no browser and requires no installed Chrome/Chromium or system Node/Bun;
-sign-in and model turns both remain in Electron. Full mode separately downloads the official pinned
-`openai/tunnel-client` build for the current OS/architecture and verifies it against the release
-SHA-256 manifest.
+각 네이티브 데스크톱 패키지에는 Electron, 플랫폼에 맞게 고정된 Bun 실행 파일, Responses 브리지, Playwright 클라이언트 코드, MCP 서버, 설정, 진단 도구 및 브라우저 헬퍼가 포함되어 있습니다. Browser-only 모드는 브라우저를 다운로드하지 않으며 Chrome/Chromium 또는 시스템 Node/Bun을 설치할 필요가 없습니다. 로그인과 모델 턴은 모두 Electron 내에 유지됩니다. Full 모드는 현재 OS/아키텍처에 대해 공식 고정 `openai/tunnel-client` 빌드를 별도로 다운로드하고 릴리스 SHA-256 매니페스트와 대조하여 확인합니다.
 
-On first launch, the embedded runtime is checked against a deterministic manifest covering every
-file path, size, and SHA-256 before any launcher port or window opens. The source, transactional
-temporary copy, and final destination are all validated before the private versioned directory is
-accepted under the application home. Daemon and MCP commands use that durable copy, which is
-required because Linux AppImage mount paths are temporary and must never be persisted in Codex or
-tunnel configuration.
+처음 시작할 때 내장 런타임은 런처 포트나 창이 열리기 전에 모든 파일 경로, 크기 및 SHA-256을 포함하는 결정론적 매니페스트와 대조됩니다. 소스, 트랜잭션 임시 사본 및 최종 대상은 애플리케이션 홈 아래에서 비공개 버전 디렉터리가 수락되기 전에 모두 검증됩니다. 데몬 및 MCP 명령은 해당 지속 가능한 복사본을 사용하며, Linux AppImage 마운트 경로는 임시적이므로 Codex 또는 터널 구성에 절대 지속되어서는 안 되기 때문에 이 복사본이 필요합니다.
 
-The launcher is the sole process supervisor on macOS, Windows, and Linux. It starts the optional
-tunnel first, waits for healthy/ready evidence, starts the Responses daemon, and then waits for its
-versioned health payload. Native login items or an owner-local XDG autostart file launch the app
-hidden after sign-in. A marker containing only launcher-owned PIDs lets doctor distinguish the
-launcher runtime from a stale or external process. Legacy macOS launchd services are drained and
-removed during an explicit launcher migration; launchd remains only for the advanced terminal-only
-mode.
+런처는 macOS, Windows 및 Linux의 유일한 프로세스 수퍼바이저입니다. 선택적 터널을 먼저 시작하고, 정상/준비 완료 증거를 기다린 다음, Responses 데몬을 시작하고 버전이 지정된 상태 페이로드를 기다립니다. 네이티브 로그인 항목 또는 소유자 로컬 XDG 자동 시작 파일은 로그인 후 앱을 숨김 상태로 시작합니다. 런처 소유 PID만 포함된 마커를 통해 doctor는 런처 런타임을 오래되었거나 외부 프로세스와 구별할 수 있습니다. 레거시 macOS launchd 서비스는 명시적 런처 마이그레이션 중에 드레인 및 제거됩니다. launchd는 고급 터미널 전용 모드에만 남아 있습니다.
 
-Setup keeps Codex's built-in `openai` provider. It routes Responses through the local daemon with
-`openai_base_url`, while pinning `experimental_realtime_webrtc_call_base_url` to Codex's official
-ChatGPT endpoint so Voice session creation never falls through to the Responses-only bridge. Both
-assignments are journaled and restored exactly on disconnect or uninstall; a conflicting existing
-Voice route requires explicit `--replace-codex-route` ownership. The daemon forwards the
-authenticated official model catalog and appends only the routed models owned by the
-`chatgpt-web/` namespace; no static catalog is installed. Subagent protocol selection is explicit,
-and new installations default to Compatibility V1 because it is the only surface portable across
-native and routed Web backends:
+설정은 Codex의 내장 `openai` 프로바이더를 유지합니다. `openai_base_url`을 사용하여 로컬 데몬을 통해 Responses를 라우팅하는 동시에 `experimental_realtime_webrtc_call_base_url`을 Codex의 공식 ChatGPT 엔드포인트에 고정하여 음성 세션 생성이 Responses 전용 브리지로 넘어가지 않도록 합니다. 두 할당은 저널링되며 연결 해제 또는 제거 시 정확히 복원됩니다. 충돌하는 기존 음성 경로는 명시적인 `--replace-codex-route` 소유권이 필요합니다. 데몬은 인증된 공식 모델 카탈로그를 전달하고 `chatgpt-web/` 네임스페이스가 소유한 라우팅된 모델만 추가합니다. 정적 카탈로그는 설치되지 않습니다. 서브에이전트 프로토콜 선택은 명시적이며, 네이티브 및 라우팅된 웹 백엔드 간에 이식 가능한 유일한 표면이므로 신규 설치는 기본적으로 Compatibility V1으로 설정됩니다:
 
-- **Compatibility V1** pins every delegation-capable native and routed row to V1 and atomically
-  manages `multi_agent = true`, `multi_agent_v2 = false`, and `[agents].max_depth` of at least 2 so
-  a routed child can spawn a routed grandchild. The integration journal preserves the user's prior
-  scalar, structured-feature, and agent-depth lines and restores them byte-for-byte on disconnect,
-  native-mode selection, or uninstall. The ChatGPT connector projects `wait_agent` as an explicit
-  10-second polling contract: terminal semantics stay native, while every non-terminal poll releases
-  the serialized MCP channel so Web children can run their own harness tools.
-- **Native** preserves every official native row and gives routed rows the selected template's
-  protocol surface. Under MultiAgent V2, Web-origin `spawn_agent`, `send_message`, and
-  `followup_task` calls include Codex's explicit `encrypted_function_args: []` plaintext marker.
-  A genuinely encrypted native-to-Web payload is rejected with one HTTP 400 before a browser is
-  opened; it is never turned into an SSE disconnect/retry loop.
+- **Compatibility V1**은 위임 가능한 모든 네이티브 및 라우팅된 행을 V1에 고정하고 원자적으로 `multi_agent = true`, `multi_agent_v2 = false` 및 최소 2의 `[agents].max_depth`를 관리하여 라우팅된 하위 항목이 라우팅된 손자 항목을 생성할 수 있도록 합니다. 통합 저널은 사용자의 이전 스칼라, 구조화된 기능 및 에이전트 깊이 라인을 보존하고 연결 해제, 네이티브 모드 선택 또는 제거 시 바이트 단위로 복원합니다. ChatGPT 커넥터는 `wait_agent`를 명시적인 10초 폴링 계약으로 투영합니다. 터미널 의미 체계는 네이티브로 유지되는 반면, 모든 비터미널 폴링은 직렬화된 MCP 채널을 해제하여 웹 하위 항목이 자체 하네스 도구를 실행할 수 있도록 합니다.
+- **Native**는 모든 공식 네이티브 행을 유지하고 라우팅된 행에 선택한 템플릿의 프로토콜 표면을 제공합니다. MultiAgent V2에서 웹 발신 `spawn_agent`, `send_message` 및 `followup_task` 호출에는 Codex의 명시적인 `encrypted_function_args: []` 일반 텍스트 마커가 포함됩니다. 진정으로 암호화된 네이티브-투-웹 페이로드는 브라우저가 열리기 전에 하나의 HTTP 400으로 거부되며, SSE 연결 끊김/재시도 루프로 바뀌지 않습니다.
 
-Catalog metadata alone never claims to change an existing task's protocol. Codex pins the protocol
-when a task starts, and its global `multi_agent_v2` override wins over per-model metadata. Switching
-protocol therefore requires restarting Codex and starting a new task. Model choice, effort,
-context, and service tiers are otherwise unchanged.
+카탈로그 메타데이터만으로는 기존 작업의 프로토콜을 변경할 수 없습니다. Codex는 작업이 시작될 때 프로토콜을 고정하며, 전역 `multi_agent_v2` 재정의가 모델별 메타데이터보다 우선합니다. 따라서 프로토콜을 전환하려면 Codex를 다시 시작하고 새 작업을 시작해야 합니다. 모델 선택, effort, 컨텍스트 및 서비스 등급은 변경되지 않습니다.
 
-The built-in provider attempts a Responses WebSocket prewarm. The local route explicitly returns
-HTTP `426`, which is Codex's native capability-negotiation signal for an immediate, session-sticky
-switch to its HTTP/SSE transport. No model or provider fallback occurs.
+내장 프로바이더는 Responses WebSocket 예열을 시도합니다. 로컬 라우트는 명시적으로 HTTP `426`을 반환하며, 이는 HTTP/SSE 전송으로의 즉각적인 세션 고정 전환을 위한 Codex의 기본 기능 협상 신호입니다. 모델 또는 프로바이더 폴백은 발생하지 않습니다.
 
-Setup never restarts an already loaded daemon implicitly. A requested stop, restart, replacement,
-or uninstall first calls a private authenticated drain endpoint. The daemon rejects new turns and
-reports two independent counters:
+설정은 이미 로드된 데몬을 암시적으로 다시 시작하지 않습니다. 요청된 중지, 다시 시작, 교체 또는 제거는 먼저 비공개 인증 드레인 엔드포인트를 호출합니다. 데몬은 새 턴을 거부하고 두 개의 독립적인 카운터를 보고합니다:
 
-- active HTTP requests, including native compaction, Search, and Image Gen forwarding;
-- active ChatGPT browser sessions, including time spent waiting for local Codex tool results.
+- 네이티브 컴팩션, Search 및 Image Gen 전달을 포함한 활성 HTTP 요청
+- 로컬 Codex 도구 결과를 기다리는 데 소요된 시간을 포함한 활성 ChatGPT 브라우저 세션
 
-The lifecycle operation proceeds only when both counters are zero. The launcher then stops the
-tunnel through its runtime command and asks the daemon to flush state and exit through an
-authenticated shutdown endpoint. If the contract is unavailable, malformed, non-idle, or cannot
-be completed, the operation fails closed and restores the drained runtime when possible. An
-unexpected child exit is recovered with a bounded restart budget; a crash loop becomes an explicit
-launcher error.
+두 카운터가 모두 0인 경우에만 수명주기 작업이 진행됩니다. 그런 다음 런처는 런타임 명령을 통해 터널을 중지하고 인증된 종료 엔드포인트를 통해 데몬에 상태를 플러시하고 종료하도록 요청합니다. 계약을 사용할 수 없거나 잘못 구성되었거나 유휴 상태가 아니거나 완료할 수 없는 경우 작업이 안전하게 실패(fail closed)하고 가능한 경우 드레인된 런타임을 복원합니다. 예기치 않은 하위 프로세스 종료는 제한된 재시작 예산으로 복구되며, 크래시 루프는 명시적인 런처 오류가 됩니다.
 
-## Security invariants
+## 보안 불변식
 
-- Bind the Responses proxy and health endpoint to loopback only.
-- Store browser state and tunnel credentials under the application home with mode `0600`.
-- Protect lifecycle control endpoints with a random application-owned bearer token.
-- Never place secret values in command-line arguments, logs, generated profiles, or Git.
-- Limit browser turns to five independent task-bound tabs and reject unsupported models explicitly.
-  The selected routed model fixes the adapter effort; a conflicting request effort cannot change it.
-- Do not retry or switch modes to evade product usage limits.
+- Responses 프록시 및 헬스 엔드포인트를 루프백에만 바인딩합니다.
+- 브라우저 상태 및 터널 자격 증명을 `0600` 모드로 애플리케이션 홈 아래에 저장합니다.
+- 무작위 애플리케이션 소유 bearer 토큰으로 수명주기 제어 엔드포인트를 보호합니다.
+- 명령줄 인수, 로그, 생성된 프로필 또는 Git에 비밀 값을 절대 두지 않습니다.
+- 브라우저 턴을 5개의 독립적인 작업 바인딩 탭으로 제한하고 지원되지 않는 모델을 명시적으로 거부합니다. 선택된 라우팅 모델은 어댑터 effort를 고정하며, 충돌하는 요청 effort는 이를 변경할 수 없습니다.
+- 제품 사용 한도를 피하기 위해 재시도하거나 모드를 전환하지 않습니다.
 
-See the complete [security model](security-model.md).
+전체 [보안 모델](security-model.ko.md)을 참조하세요.
