@@ -60,7 +60,7 @@ function launcherConfig(descriptorPath, overrides = {}) {
       ? "\\\\.\\pipe\\codex-chatgpt-web-runtime-supervisor-test"
       : path.join(root, "turn-broker.sock"),
     headed: true,
-    proAvailable: true,
+    extraHighAvailable: true, proAvailable: true,
     autoApproveToolCalls: false,
     controlToken: "runtime-supervisor-control-token-0123456789abcdef",
     runtimeCommand: [process.execPath],
@@ -250,7 +250,7 @@ test("launcher runtime validation accepts native Windows paths and a named pipe"
     brokerSocketPath: "\\\\.\\pipe\\codex-chatgpt-web-runtime-supervisor-test",
     headed: true,
     solAvailable: true,
-    proAvailable: true,
+    extraHighAvailable: true, proAvailable: true,
     autoApproveToolCalls: false,
     controlToken: "runtime-supervisor-control-token-0123456789abcdef",
     runtimeCommand: ["C:\\Users\\Example\\.codex-chatgpt-web\\runtime\\bun.exe"],
@@ -502,7 +502,8 @@ test("tunnel readiness preserves a native managed process identity when one is r
 
 test("steady tunnel monitoring uses the runtime local health endpoints without a control-plane status lookup", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-local-tunnel-health-"));
-  const health = await localHealthServer();
+  const health = await localHealthServer(() => 200, pathname => pathname.startsWith("/api/logs")
+    ? JSON.stringify({ events: [] }) : "ok");
   const supervisor = new RuntimeSupervisor({
     app: { getVersion: () => "0.2.0", isPackaged: false },
     logger: { info() {}, warn() {}, error() {} },
@@ -615,6 +616,53 @@ test("recent internal MCP transport failures override false-green tunnel readine
   }
 });
 
+test("ready inventory cannot replace missing MCP evidence, and local evidence restores readiness", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-tunnel-evidence-"));
+  let diagnosticsAvailable = false;
+  const health = await localHealthServer(
+    pathname => pathname.startsWith("/api/logs") && !diagnosticsAvailable ? 503 : 200,
+    pathname => pathname.startsWith("/api/logs") ? JSON.stringify({ events: [] }) : "ok",
+  );
+  const supervisor = new RuntimeSupervisor({
+    app: { getVersion: () => "0.2.0", isPackaged: false },
+    logger: { info() {}, warn() {}, error() {} },
+    sourceRoot: root, coreHome: root, browserDescriptorPath: path.join(root, "launcher.json"),
+  });
+  let inventoryReads = 0;
+  let stopped = false;
+  supervisor.readTunnelHealth = async () => {
+    inventoryReads += 1;
+    return { ready: !stopped, statusKnown: true, state: stopped ? "stopped" : "ready",
+      processRunning: !stopped, detail: "native inventory" };
+  };
+  try {
+    // This inventory shape is observed on both real managed profiles: ready without a URL.
+    const missing = await supervisor.observeTunnelForMonitor({ tunnel: {} });
+    assert.equal(missing.ready, false);
+    assert.equal(missing.statusKnown, false);
+    assert.equal(missing.fatal, false);
+    supervisor.tunnelHealthBaseUrl = health.baseUrl;
+    const unavailable = await supervisor.observeTunnelForMonitor({ tunnel: {} });
+    assert.equal(unavailable.ready, false);
+    assert.equal(unavailable.statusKnown, false);
+    assert.equal(unavailable.fatal, false, "unreadable diagnostics are not proof of a broken dispatcher");
+    diagnosticsAvailable = true;
+    const restored = await supervisor.observeTunnelForMonitor({ tunnel: {} });
+    assert.equal(restored.ready, true);
+    assert.equal(restored.statusKnown, true);
+    assert.equal(inventoryReads, 2, "healthy local monitoring needs no inventory lookup");
+    diagnosticsAvailable = false;
+    stopped = true;
+    const absent = await supervisor.observeTunnelForMonitor({ tunnel: {} });
+    assert.equal(absent.ready, false);
+    assert.equal(absent.statusKnown, true);
+    assert.equal(absent.state, "stopped");
+  } finally {
+    await health.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("tunnel readiness accepts the official tmux status without inventing a PID", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-tunnel-health-tmux-"));
   const supervisor = new RuntimeSupervisor({
@@ -705,6 +753,8 @@ test("managed startup fails immediately when native status reports a stopped run
 
 test("launcher adopts a healthy native managed tunnel without spawning a foreground wrapper", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-managed-tunnel-adopt-"));
+  const health = await localHealthServer(() => 200, pathname => pathname.startsWith("/api/logs")
+    ? JSON.stringify({ events: [] }) : "ok");
   const binaryPath = path.join(root, "tunnel-client");
   const runtimeKeyFile = path.join(root, "runtime.key");
   const profileDir = path.join(root, "profiles");
@@ -721,9 +771,10 @@ test("launcher adopts a healthy native managed tunnel without spawning a foregro
   });
   let connects = 0;
   let monitors = 0;
+  supervisor.tunnelHealthBaseUrl = "http://127.0.0.1:1";
   supervisor.readTunnelHealth = async () => ({
     ready: true,
-    pid: 123_456_778,
+    pid: process.pid,
     statusKnown: true,
     detail: "ready",
   });
@@ -731,11 +782,16 @@ test("launcher adopts a healthy native managed tunnel without spawning a foregro
     connects += 1;
     return { code: 0, output: "{}" };
   };
+  const healthFile = path.join(root, "health.url");
+  fs.writeFileSync(healthFile, health.baseUrl);
+  supervisor.runTunnelCommand = async () => ({ code: 0,
+    output: JSON.stringify({ aliases: [{ alias: "codex-chatgpt-web", health_url_file: healthFile }] }) });
   supervisor.startTunnelMonitor = () => { monitors += 1; };
   try {
     await supervisor.startTunnel({
       mode: "full",
       tunnel: {
+        alias: "codex-chatgpt-web",
         binaryPath,
         runtimeKeyFile,
         profileDir,
@@ -744,12 +800,54 @@ test("launcher adopts a healthy native managed tunnel without spawning a foregro
     });
     assert.equal(connects, 0);
     assert.equal(monitors, 1);
-    assert.equal(supervisor.tunnel?.pid, 123_456_778);
+    assert.equal(supervisor.tunnel?.pid, process.pid);
     assert.equal(supervisor.tunnel?.managed, true);
+    assert.equal(supervisor.tunnelHealthBaseUrl, health.baseUrl, "adoption cannot inherit a stale endpoint");
+    assert.equal((await supervisor.readLocalTunnelHealth()).ready, true);
   } finally {
+    await health.close();
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+for (const existingReady of [true, false]) {
+  test(`a ${existingReady ? "previously running" : "newly connected"} tunnel cannot start monitoring before MCP verification`, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-tunnel-start-proof-"));
+    const health = await localHealthServer(() => 200, pathname => pathname.startsWith("/api/logs")
+      ? JSON.stringify({ events: [{ time: new Date().toISOString(),
+        message: "dispatcher received MCP upstream error; posted error response to control plane",
+        attrs: { failure_source: "client_internal", status_code: 502, upstream_response_received: false, rpc_method: "tools/call" },
+      }] }) : "ok");
+    const supervisor = new RuntimeSupervisor({
+      app: { getVersion: () => "0.2.0", isPackaged: false },
+      logger: { info() {}, warn() {}, error() {} },
+      sourceRoot: root, coreHome: root, browserDescriptorPath: path.join(root, "launcher.json"),
+    });
+    let connected = existingReady;
+    let monitoring = false;
+    const config = { mode: "full", tunnel: { alias: "owned-test" } };
+    supervisor.assertTunnelClientReady = () => {};
+    supervisor.readTunnelHealth = async () => ({ ready: connected, statusKnown: true,
+      state: connected ? "ready" : "stopped", processRunning: connected, pid: null });
+    const healthFile = path.join(root, "health.url");
+    fs.writeFileSync(healthFile, health.baseUrl);
+    supervisor.runTunnelCommand = async () => ({ code: 0,
+      output: JSON.stringify({ aliases: [{ alias: "owned-test", health_url_file: healthFile }] }) });
+    supervisor.runTunnelConnectCommand = async () => { connected = true; return { code: 0 }; };
+    supervisor.runTunnelStopCommand = async () => { connected = false; return { code: 0 }; };
+    supervisor.waitForTunnelStopped = async () => { assert.equal(connected, false); };
+    supervisor.startTunnelMonitor = () => { monitoring = true; };
+    try {
+      await assert.rejects(supervisor.startTunnel(config), /MCP transport is unhealthy/);
+      assert.equal(monitoring, false);
+      assert.equal(connected, false, "failed startup must complete its existing cleanup");
+      assert.equal(supervisor.tunnel, null);
+    } finally {
+      await health.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test("tunnel recovery replaces a false-green managed runtime and proves the fresh MCP transport", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-managed-tunnel-recovery-"));
@@ -820,6 +918,76 @@ test("tunnel recovery replaces a false-green managed runtime and proves the fres
   }
 });
 
+test("fresh tunnel recovery discovers its official loopback diagnostics before probing MCP", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-tunnel-health-discovery-"));
+  const supervisor = new RuntimeSupervisor({
+    app: { getVersion: () => "0.2.0", isPackaged: false },
+    logger: { info() {}, warn() {}, error() {} },
+    sourceRoot: root,
+    coreHome: root,
+    browserDescriptorPath: path.join(root, "launcher.json"),
+  });
+  const config = {
+    tunnel: {
+      alias: "codex-chatgpt-web",
+      binaryPath: path.join(root, "tunnel-client"),
+      profileDir: root,
+    },
+  };
+  const commands = [];
+  const healthFile = path.join(root, "health.url");
+  fs.writeFileSync(healthFile, "http://127.0.0.1:43127\n");
+  supervisor.runTunnelCommand = async (_config, args) => {
+    commands.push(args);
+    return {
+      code: 0,
+      output: JSON.stringify({
+        aliases: [{ alias: "codex-chatgpt-web", health_url_file: healthFile }],
+      }),
+    };
+  };
+  supervisor.probeTunnelMcpTransport = async () => ({
+    observed: true,
+    ok: true,
+    fatal: false,
+    detail: "MCP transport has no recent internal failures",
+  });
+  try {
+    await supervisor.waitForTunnelMcpTransport(config, 25);
+    assert.equal(supervisor.tunnelHealthBaseUrl, "http://127.0.0.1:43127");
+    assert.deepEqual(commands, [["runtimes", "list", "--json"]]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("tunnel diagnostics discovery rejects a non-loopback endpoint", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-tunnel-health-nonlocal-"));
+  const supervisor = new RuntimeSupervisor({
+    app: { getVersion: () => "0.2.0", isPackaged: false },
+    logger: { info() {}, warn() {}, error() {} },
+    sourceRoot: root,
+    coreHome: root,
+    browserDescriptorPath: path.join(root, "launcher.json"),
+  });
+  const healthFile = path.join(root, "health.url");
+  fs.writeFileSync(healthFile, "https://example.com/healthz\n");
+  supervisor.runTunnelCommand = async () => ({
+    code: 0,
+    output: JSON.stringify({ aliases: [{ alias: "codex-chatgpt-web", health_url_file: healthFile }] }),
+  });
+  try {
+    await assert.rejects(
+      supervisor.discoverTunnelHealthBaseUrl({
+        tunnel: { alias: "codex-chatgpt-web", binaryPath: path.join(root, "tunnel-client"), profileDir: root },
+      }),
+      /no verified loopback endpoint/,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("launcher stops an unhealthy managed runtime before reconnecting the alias", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-managed-tunnel-reconnect-"));
   const binaryPath = path.join(root, "tunnel-client");
@@ -855,6 +1023,7 @@ test("launcher stops an unhealthy managed runtime before reconnecting the alias"
     events.push("connect");
     return { code: 0, output: "{}" };
   };
+  supervisor.waitForTunnelMcpTransport = async () => { events.push("mcp"); };
   supervisor.startTunnelMonitor = () => { events.push("monitor"); };
   try {
     await supervisor.startTunnel({
@@ -870,6 +1039,7 @@ test("launcher stops an unhealthy managed runtime before reconnecting the alias"
       "stop",
       "stopped",
       "connect",
+      "mcp",
       "monitor",
     ]);
     assert.equal(supervisor.tunnel?.pid, 123_456_776);
@@ -1179,7 +1349,8 @@ test("explicit launcher shutdown cancels active turns before the graceful stop",
   assert.deepEqual(actions, ["cancel-turns", "graceful-stop"]);
 });
 
-test("launcher supervisor requests exact browser trace cancellation", async () => {
+for (const reason of [undefined, "browser_surface_bootstrap_timeout", "helper_heartbeat_expired"])
+test(`launcher supervisor forwards exact trace cancellation: ${reason ?? "user close"}`, async () => {
   const supervisor = new RuntimeSupervisor({
     app: { getVersion: () => "0.2.0", isPackaged: false },
     logger: { info() {}, warn() {}, error() {} },
@@ -1191,7 +1362,7 @@ test("launcher supervisor requests exact browser trace cancellation", async () =
   supervisor.daemon = { exitCode: null, signalCode: null };
   supervisor.control = async (_config, action, options) => {
     assert.equal(action, "cancel-turn");
-    assert.deepEqual(options.body, { traceId: "trace_exact" });
+    assert.deepEqual(options.body, { traceId: "trace_exact", ...(reason ? { reason } : {}) });
     assert.equal(options.timeoutMs, 15_000);
     return {
       status: "ok",
@@ -1201,7 +1372,7 @@ test("launcher supervisor requests exact browser trace cancellation", async () =
     };
   };
 
-  const result = await supervisor.cancelBrowserTurn("trace_exact");
+  const result = await supervisor.cancelBrowserTurn("trace_exact", reason);
   assert.equal(result.trace_id, "trace_exact");
 });
 

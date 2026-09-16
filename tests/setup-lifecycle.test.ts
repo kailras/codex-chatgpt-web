@@ -25,14 +25,23 @@ test("launcher setup refreshes account capabilities only when missing or explici
   const verifiedLauncher = {
     browserHost: "launcher",
     solAvailable: true,
-    proAvailable: false,
-  } as never;
+    extraHighAvailable: false, proAvailable: false,
+  };
 
   expect(launcherCapabilityProbeRequired(undefined)).toBe(true);
-  expect(launcherCapabilityProbeRequired(verifiedLauncher)).toBe(false);
+  expect(launcherCapabilityProbeRequired(verifiedLauncher as never)).toBe(false);
+  expect(launcherCapabilityProbeRequired({ ...verifiedLauncher, extraHighAvailable: undefined } as never)).toBe(true);
   expect(launcherCapabilityProbeRequired({
     browserHost: "launcher",
-    proAvailable: false,
+    extraHighAvailable: false, proAvailable: false,
   } as never)).toBe(true);
-  expect(launcherCapabilityProbeRequired(verifiedLauncher, true)).toBe(true);
+  expect(launcherCapabilityProbeRequired(verifiedLauncher as never, true)).toBe(true);
+  expect(launcherCapabilityProbeRequired({
+    ...verifiedLauncher,
+    browserInteractionMode: "manual",
+  } as never)).toBe(false);
+  expect(launcherCapabilityProbeRequired({
+    ...verifiedLauncher,
+    browserInteractionMode: "manual",
+  } as never, false, "automatic")).toBe(true);
 });

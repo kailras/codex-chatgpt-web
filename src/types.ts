@@ -262,6 +262,8 @@ export interface CodexProviderConfig {
   chatgptWeb?: {
     /** ChatGPT custom connector attached to tool-capable temporary chats. */
     appName?: string;
+    /** Whether ChatGPT DOM interaction is automatic or explicitly driven by the user. */
+    browserInteractionMode?: "automatic" | "manual";
     /** Explicit browser owner. Launcher mode attaches to the embedded Electron ChatGPT surface. */
     browserHost?: "managed-chrome" | "launcher";
     /** Owner-only descriptor containing the launcher's loopback CDP and control endpoints. */
@@ -296,6 +298,7 @@ export interface CodexProviderConfig {
     /** Account capability proven by the authenticated browser probe. */
     solAvailable?: boolean;
     /** Account capability proven by the authenticated browser probe. */
+    extraHighAvailable?: boolean;
     proAvailable?: boolean;
     /** Authorize per-call "Allow once" confirmation clicks for this connector. */
     autoApproveToolCalls?: boolean;

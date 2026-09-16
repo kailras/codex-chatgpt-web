@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { ChatGptWebAdapterError } from "../src/adapters/chatgpt-web/adapter-error";
 import { ChatGptBrowserWorker, type BrowserTurn } from "../src/adapters/chatgpt-web/browser-worker";
 import { createChatGptWebAdapter } from "../src/adapters/chatgpt-web/index";
@@ -9,7 +8,7 @@ import { compileChatGptWebPrompt } from "../src/adapters/chatgpt-web/prompt";
 import { parseRequest } from "../src/responses/parser";
 import type { AdapterEvent, CodexProviderConfig } from "../src/types";
 
-const capabilities = { localToolsEnabled: true, solAvailable: true, proAvailable: true };
+const capabilities = { localToolsEnabled: true, solAvailable: true, extraHighAvailable: true, proAvailable: true };
 const turnToken = "turn_12345678901234567890123456789012";
 const parse = (text: unknown) => parseRequest({
   model: CHATGPT_WEB_MODEL_ID,
@@ -50,12 +49,7 @@ test("strict JSON validation accepts only the exact full schema-conforming answe
   ]) expect(() => validate(invalid)).toThrow(ChatGptWebAdapterError);
 });
 
-test("strict mode buffers output until local validation while non-strict stays best-effort", () => {
-  const source = readFileSync(new URL("../src/adapters/chatgpt-web/index.ts", import.meta.url), "utf8");
-  expect(source).toContain("const bufferStructuredOutput = structuredOutputValidator !== undefined;");
-  expect(source).toContain("structuredOutputValidator?.(settled.answer);");
-  expect(source).toContain("structuredOutputValidator?.(completedOutcome.answer);");
-  expect(source).toContain("emitRoundBatch(buffer => emitTextDeltas([completedOutcome.answer], buffer));");
+test("non-strict JSON schema does not install a local output validator", () => {
   const nonStrict = parse({ format: { type: "json_schema", name: "item", strict: false, schema: { type: "string" } } });
   expect(createChatGptStructuredOutputValidator(nonStrict.options.outputFormat)).toBeUndefined();
 });
@@ -79,7 +73,7 @@ async function runStrictAdapterAnswer(answer: string): Promise<AdapterEvent[]> {
   const provider: CodexProviderConfig = {
     adapter: "chatgpt-web",
     baseUrl: `browser://strict-output-${nonce}`,
-    chatgptWeb: { localToolsEnabled: false, solAvailable: true, proAvailable: true },
+    chatgptWeb: { localToolsEnabled: false, solAvailable: true, extraHighAvailable: true, proAvailable: true },
   };
   const worker = ChatGptBrowserWorker.forProvider(provider);
   const originalRun = worker.run.bind(worker);

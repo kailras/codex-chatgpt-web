@@ -2,16 +2,16 @@ import { existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { join } from "node:path";
-import type { AppConfig, RuntimeMode, SubagentProtocol } from "./config";
+import type { AppConfig, BrowserInteractionMode, RuntimeMode, SubagentProtocol } from "./config";
 import {
   currentRuntimeCommand,
   defaultBrokerEndpoint,
   defaultConfig,
   getConfigPath,
   loadConfigForSetup,
-  resolveDevSetupConnectorName,
-  resolveSetupConnectorName,
+  resolveInteractionConnectorIdentities,
   saveConfig,
+  tunnelConfigForInteractionMode,
 } from "./config";
 import {
   browserLoginStateExists,
@@ -44,15 +44,16 @@ import { VERSION } from "./version";
 
 export interface SetupOptions {
   mode: RuntimeMode;
+  browserInteractionMode?: BrowserInteractionMode;
   subagentProtocol?: SubagentProtocol;
   port?: number;
   chromeExecutablePath?: string;
   browserHostDescriptorPath?: string;
   refreshAccountCapabilities?: boolean;
-  appName?: string;
   forceLogin?: boolean;
   autoApproveToolCalls?: boolean;
   experimentalBiggerContext?: boolean;
+  zeroRiskProEnabled?: boolean;
   replaceCodexRoute?: boolean;
   restartService?: boolean;
   acknowledgedUnofficial?: boolean;
@@ -71,6 +72,12 @@ export interface SetupResult {
   connectorSetupRequired: boolean;
 }
 
+interface PreparedSetup {
+  existing: AppConfig | undefined;
+  config: AppConfig;
+  launcherOwned: boolean;
+}
+
 export interface DevProfileSetupResult {
   mode: RuntimeMode;
   configPath: string;
@@ -86,15 +93,24 @@ export interface ExistingFullSetupCredentials {
 export function launcherCapabilityProbeRequired(
   existing: AppConfig | undefined,
   refreshAccountCapabilities = false,
+  interactionMode: BrowserInteractionMode = existing?.browserInteractionMode ?? "automatic",
 ): boolean {
+  if (interactionMode === "manual") return false;
   return refreshAccountCapabilities
+    || existing?.browserInteractionMode === "manual"
     || existing?.browserHost !== "launcher"
     || typeof existing.solAvailable !== "boolean"
+    || typeof existing.extraHighAvailable !== "boolean"
     || typeof existing.proAvailable !== "boolean";
 }
 
-export function existingFullSetupCredentials(existing: AppConfig | undefined): ExistingFullSetupCredentials {
-  const tunnel = existing?.mode === "full" ? existing.tunnel : undefined;
+export function existingFullSetupCredentials(
+  existing: AppConfig | undefined,
+  interactionMode: BrowserInteractionMode = existing?.browserInteractionMode ?? "automatic",
+): ExistingFullSetupCredentials {
+  const tunnel = existing?.mode === "full"
+    ? tunnelConfigForInteractionMode(existing, interactionMode)
+    : undefined;
   return {
     tunnelId: Boolean(tunnel?.tunnelId),
     runtimeKey: Boolean(tunnel?.runtimeKeyFile && existsSync(tunnel.runtimeKeyFile)),
@@ -115,19 +131,26 @@ function meaningfulRuntimeChange(before: AppConfig, after: AppConfig): boolean {
     port: before.port,
     contextWindow: before.contextWindow,
     appName: before.appName,
+    automaticAppName: before.automaticAppName,
+    manualAppName: before.manualAppName,
     browserHost: before.browserHost,
+    browserInteractionMode: before.browserInteractionMode,
     browserHostDescriptorPath: before.browserHostDescriptorPath,
     chromeExecutablePath: before.chromeExecutablePath,
     storageStatePath: before.storageStatePath,
     brokerSocketPath: before.brokerSocketPath,
     headed: before.headed,
     solAvailable: before.solAvailable,
+    extraHighAvailable: before.extraHighAvailable,
     proAvailable: before.proAvailable,
     experimentalBiggerContext: before.experimentalBiggerContext,
+    zeroRiskProEnabled: before.zeroRiskProEnabled,
     autoApproveToolCalls: before.autoApproveToolCalls,
     controlToken: before.controlToken,
     runtimeCommand: before.runtimeCommand,
     tunnel: before.tunnel,
+    automaticTunnel: before.automaticTunnel,
+    manualTunnel: before.manualTunnel,
   }) !== JSON.stringify({
     mode: after.mode,
     subagentProtocol: after.subagentProtocol,
@@ -136,19 +159,26 @@ function meaningfulRuntimeChange(before: AppConfig, after: AppConfig): boolean {
     port: after.port,
     contextWindow: after.contextWindow,
     appName: after.appName,
+    automaticAppName: after.automaticAppName,
+    manualAppName: after.manualAppName,
     browserHost: after.browserHost,
+    browserInteractionMode: after.browserInteractionMode,
     browserHostDescriptorPath: after.browserHostDescriptorPath,
     chromeExecutablePath: after.chromeExecutablePath,
     storageStatePath: after.storageStatePath,
     brokerSocketPath: after.brokerSocketPath,
     headed: after.headed,
     solAvailable: after.solAvailable,
+    extraHighAvailable: after.extraHighAvailable,
     proAvailable: after.proAvailable,
     experimentalBiggerContext: after.experimentalBiggerContext,
+    zeroRiskProEnabled: after.zeroRiskProEnabled,
     autoApproveToolCalls: after.autoApproveToolCalls,
     controlToken: after.controlToken,
     runtimeCommand: after.runtimeCommand,
     tunnel: after.tunnel,
+    automaticTunnel: after.automaticTunnel,
+    manualTunnel: after.manualTunnel,
   });
 }
 
@@ -156,7 +186,9 @@ export function tunnelWorkerRuntimeChanged(before: AppConfig | undefined, after:
   if (!before || before.mode !== "full" || after.mode !== "full") return false;
   return before.releaseVersion !== after.releaseVersion
     || JSON.stringify(before.runtimeCommand) !== JSON.stringify(after.runtimeCommand)
-    || before.brokerSocketPath !== after.brokerSocketPath;
+    || before.brokerSocketPath !== after.brokerSocketPath
+    || before.browserInteractionMode !== after.browserInteractionMode
+    || JSON.stringify(before.tunnel) !== JSON.stringify(after.tunnel);
 }
 
 async function assertPortAvailable(host: string, port: number): Promise<void> {
@@ -206,9 +238,18 @@ async function waitForProxy(config: AppConfig, timeoutMs = 10_000): Promise<void
   throw new Error(`Responses proxy did not become ready: ${lastError}`);
 }
 
-function baseConfig(existing: AppConfig | undefined, options: SetupOptions): AppConfig {
+function baseConfig(
+  existing: AppConfig | undefined,
+  options: SetupOptions,
+  profile: "production" | "development" = "production",
+): AppConfig {
   const config = existing ? structuredClone(existing) : defaultConfig(options.mode);
   config.mode = options.mode;
+  if (options.browserInteractionMode) config.browserInteractionMode = options.browserInteractionMode;
+  Object.assign(config, resolveInteractionConnectorIdentities(
+    config.browserInteractionMode,
+    profile,
+  ));
   if (options.subagentProtocol) config.subagentProtocol = options.subagentProtocol;
   config.releaseVersion = VERSION;
   config.runtimeCommand = currentRuntimeCommand();
@@ -225,10 +266,33 @@ function baseConfig(existing: AppConfig | undefined, options: SetupOptions): App
     config.browserHost = "managed-chrome";
     delete config.browserHostDescriptorPath;
   }
-  config.appName = resolveSetupConnectorName(existing?.appName, options.appName);
   if (options.autoApproveToolCalls !== undefined) config.autoApproveToolCalls = options.autoApproveToolCalls;
   if (options.experimentalBiggerContext !== undefined) {
     config.experimentalBiggerContext = options.experimentalBiggerContext;
+  }
+  if (options.zeroRiskProEnabled !== undefined) {
+    if (config.browserInteractionMode !== "manual") {
+      throw new Error("Zero Risk Pro can be configured only with --zero-risk-browser-interaction");
+    }
+    config.zeroRiskProEnabled = options.zeroRiskProEnabled;
+  }
+  if (config.browserInteractionMode === "manual") {
+    if (options.refreshAccountCapabilities) {
+      throw new Error("Zero Risk cannot refresh account capabilities");
+    }
+    if (options.forceLogin) {
+      throw new Error("Zero Risk uses the launcher's existing ChatGPT session; --login is unavailable");
+    }
+    if (options.experimentalBiggerContext === true) {
+      throw new Error("Zero Risk does not support Bigger Context");
+    }
+    if (config.mode !== "full") {
+      throw new Error("Zero Risk requires --full so Codex Zero Risk can signal start, tools, and completion");
+    }
+    if (config.browserHost !== "launcher") {
+      throw new Error("Zero Risk requires the Launcher; pass --browser-host-descriptor from the running Launcher");
+    }
+    config.experimentalBiggerContext = false;
   }
   if (options.acknowledgedUnofficial) config.acknowledgedUnofficialAt = new Date().toISOString();
   if (!config.acknowledgedUnofficialAt) {
@@ -242,14 +306,19 @@ async function inspectLauncherCapabilities(
   existing: AppConfig | undefined,
   refreshAccountCapabilities: boolean,
   expectedProfile: "production" | "development",
-): Promise<{ solAvailable: boolean; proAvailable: boolean }> {
-  const detectCapabilities = launcherCapabilityProbeRequired(existing, refreshAccountCapabilities);
+): Promise<{ solAvailable: boolean; extraHighAvailable: boolean; proAvailable: boolean }> {
+  const detectCapabilities = launcherCapabilityProbeRequired(
+    existing,
+    refreshAccountCapabilities,
+    config.browserInteractionMode,
+  );
   const inspected = await inspectLauncherBrowserHost(config.browserHostDescriptorPath!, {
     detectCapabilities,
     expectedProfile,
   });
   return {
     solAvailable: detectCapabilities ? inspected.solAvailable === true : existing!.solAvailable,
+    extraHighAvailable: detectCapabilities ? inspected.extraHighAvailable === true : existing!.extraHighAvailable === true,
     proAvailable: detectCapabilities ? inspected.proAvailable === true : existing!.proAvailable,
   };
 }
@@ -257,28 +326,62 @@ async function inspectLauncherCapabilities(
 async function configureTunnel(config: AppConfig, existing: AppConfig | undefined, options: SetupOptions): Promise<void> {
   if (config.mode === "browser-only") {
     delete config.tunnel;
+    delete config.automaticTunnel;
+    delete config.manualTunnel;
     return;
   }
-  const existingTunnel = existing?.mode === "full" ? existing.tunnel : undefined;
+  const interactionMode = config.browserInteractionMode;
+  const legacyTunnel = existing?.mode === "full"
+    && !existing.automaticTunnel
+    && !existing.manualTunnel
+    ? existing.tunnel
+    : undefined;
+  let automaticTunnel = existing?.automaticTunnel
+    ?? legacyTunnel;
+  let manualTunnel = existing?.manualTunnel;
+  const existingTunnel = interactionMode === "manual" ? manualTunnel : automaticTunnel;
   const tunnelId = options.tunnelId ?? existingTunnel?.tunnelId;
   if (!tunnelId) {
-    throw new Error("Full mode requires --tunnel-id. Create it at https://platform.openai.com/settings/organization/tunnels");
+    throw new Error(`${interactionMode === "manual" ? "Zero Risk" : "Automatic"} mode requires its own Tunnel ID`);
   }
   let runtimeKeyFile = existingTunnel?.runtimeKeyFile;
-  if (!runtimeKeyFile && existsSync(managedRuntimeKeyPath())) runtimeKeyFile = managedRuntimeKeyPath();
-  if (options.runtimeKeyFile) runtimeKeyFile = installRuntimeKey(options.runtimeKeyFile);
-  if (options.runtimeKeyValue) runtimeKeyFile = installRuntimeKeyBytes(options.runtimeKeyValue);
+  const managedKeyFile = managedRuntimeKeyPath(interactionMode);
+  if ((!runtimeKeyFile || !existsSync(runtimeKeyFile)) && existsSync(managedKeyFile)) {
+    runtimeKeyFile = managedKeyFile;
+  }
+  if (options.runtimeKeyFile) runtimeKeyFile = installRuntimeKey(options.runtimeKeyFile, interactionMode);
+  if (options.runtimeKeyValue) runtimeKeyFile = installRuntimeKeyBytes(options.runtimeKeyValue, interactionMode);
+  if (runtimeKeyFile && runtimeKeyFile !== managedKeyFile && existsSync(runtimeKeyFile)) {
+    runtimeKeyFile = installRuntimeKey(runtimeKeyFile, interactionMode);
+  }
   if (!runtimeKeyFile || !existsSync(runtimeKeyFile)) {
-    throw new Error("Full mode requires a runtime key. Import it interactively or pass --runtime-key-file; create it at https://platform.openai.com/settings/organization/api-keys");
+    throw new Error(`${interactionMode === "manual" ? "Zero Risk" : "Automatic"} mode requires its own runtime key`);
   }
   const installedBinary = await installTunnelClient();
-  config.tunnel = createTunnelConfig({
+  const productionProfileName = interactionMode === "manual"
+    ? "codex-chatgpt-web-zero-risk"
+    : "codex-chatgpt-web";
+  const profileName = config.purpose === DEV_CONFIG_PURPOSE
+    ? interactionMode === "manual" ? `${DEV_TUNNEL_BASE_NAME}-zero-risk` : DEV_TUNNEL_BASE_NAME
+    : productionProfileName;
+  const configuredTunnel = createTunnelConfig({
     binaryPath: installedBinary,
     tunnelId,
     runtimeKeyFile,
-    profileName: existingTunnel?.profileName,
-    alias: existingTunnel?.alias,
+    profileName,
+    alias: profileName,
   });
+  const otherTunnel = interactionMode === "manual" ? automaticTunnel : manualTunnel;
+  if (otherTunnel?.tunnelId === configuredTunnel.tunnelId) {
+    throw new Error("Automatic and Zero Risk require different Tunnel IDs and separate ChatGPT connectors");
+  }
+  if (interactionMode === "manual") manualTunnel = configuredTunnel;
+  else automaticTunnel = configuredTunnel;
+  config.tunnel = configuredTunnel;
+  if (automaticTunnel) config.automaticTunnel = automaticTunnel;
+  else delete config.automaticTunnel;
+  if (manualTunnel) config.manualTunnel = manualTunnel;
+  else delete config.manualTunnel;
 }
 
 async function bootstrapTunnelProfile(config: AppConfig): Promise<void> {
@@ -306,7 +409,7 @@ async function bootstrapTunnelProfile(config: AppConfig): Promise<void> {
   if (bootstrapError) throw bootstrapError;
 }
 
-export async function setup(options: SetupOptions): Promise<SetupResult> {
+function prepareSetup(options: SetupOptions): PreparedSetup {
   const existing = loadExistingConfig();
   if (existing?.purpose === DEV_CONFIG_PURPOSE) {
     throw new Error("A DEV harness configuration cannot be installed into Codex");
@@ -324,6 +427,49 @@ export async function setup(options: SetupOptions): Promise<SetupResult> {
       + "Use the Codex Web GPT launcher on Windows or Linux.",
     );
   }
+  return { existing, config, launcherOwned };
+}
+
+export function preflightSetup(options: SetupOptions): void {
+  const { existing, config } = prepareSetup(options);
+  if (config.mode === "full") {
+    const saved = existing?.mode === "full"
+      ? tunnelConfigForInteractionMode(existing, config.browserInteractionMode)
+      : undefined;
+    const tunnelId = options.tunnelId ?? saved?.tunnelId;
+    if (!tunnelId) {
+      throw new Error(
+        `${config.browserInteractionMode === "manual" ? "Zero Risk" : "Automatic"} mode needs its own MCP Tunnel ID`,
+      );
+    }
+    const savedKey = saved?.runtimeKeyFile;
+    const managedKey = managedRuntimeKeyPath(config.browserInteractionMode);
+    const hasRuntimeKey = Boolean(
+      options.runtimeKeyValue
+      || (options.runtimeKeyFile && existsSync(options.runtimeKeyFile))
+      || (savedKey && existsSync(savedKey))
+      || existsSync(managedKey),
+    );
+    if (!hasRuntimeKey) {
+      throw new Error(
+        `${config.browserInteractionMode === "manual" ? "Zero Risk" : "Automatic"} mode needs its own MCP runtime key`,
+      );
+    }
+    const otherMode = config.browserInteractionMode === "manual" ? "automatic" : "manual";
+    const other = existing?.mode === "full"
+      ? tunnelConfigForInteractionMode(existing, otherMode)
+      : undefined;
+    if (other?.tunnelId === tunnelId) {
+      throw new Error("Automatic and Zero Risk require different Tunnel IDs and separate ChatGPT connectors");
+    }
+  }
+  preflightCodexIntegration(config, {
+    replaceExistingRoute: options.replaceCodexRoute,
+  });
+}
+
+export async function setup(options: SetupOptions): Promise<SetupResult> {
+  const { existing, config, launcherOwned } = prepareSetup(options);
   preflightCodexIntegration(config, {
     replaceExistingRoute: options.replaceCodexRoute,
   });
@@ -346,9 +492,13 @@ export async function setup(options: SetupOptions): Promise<SetupResult> {
   }
 
   let loginCreated = false;
-  let solAvailable: boolean | undefined;
-  let proAvailable: boolean | undefined;
-  if (config.browserHost === "launcher") {
+  let solAvailable: boolean | undefined = config.solAvailable;
+  let extraHighAvailable: boolean | undefined = config.extraHighAvailable;
+  let proAvailable: boolean | undefined = config.proAvailable;
+  if (config.browserInteractionMode === "manual") {
+    // The generic manual route is independent of account capabilities. The launcher may open the
+    // authenticated surface, but setup must not inspect its model selector or infer availability.
+  } else if (config.browserHost === "launcher") {
     if (options.forceLogin) throw new Error("Launcher browser login is owned by the launcher UI; --login cannot replace it");
     const capabilities = await inspectLauncherCapabilities(
       config,
@@ -357,15 +507,19 @@ export async function setup(options: SetupOptions): Promise<SetupResult> {
       "production",
     );
     solAvailable = capabilities.solAvailable;
+    extraHighAvailable = capabilities.extraHighAvailable;
     proAvailable = capabilities.proAvailable;
   } else {
     const stored = storedBrowserLoginCapabilities(config);
     solAvailable = stored.solAvailable;
+    extraHighAvailable = stored.extraHighAvailable;
     proAvailable = stored.proAvailable;
     const loginRequired = options.forceLogin || !browserLoginStateExists(config);
     const capabilityProbeRequired = !loginRequired
       && (options.refreshAccountCapabilities === true
+        || existing?.browserInteractionMode === "manual"
         || solAvailable === undefined
+        || extraHighAvailable === undefined
         || proAvailable === undefined);
     if (beforeService.loaded && (loginRequired || capabilityProbeRequired) && !options.restartService) {
       throw new Error(
@@ -377,15 +531,18 @@ export async function setup(options: SetupOptions): Promise<SetupResult> {
     if (loginRequired) {
       const login = await loginToChatGpt(config);
       solAvailable = login.solAvailable;
+      extraHighAvailable = login.extraHighAvailable;
       proAvailable = login.proAvailable;
       loginCreated = true;
     } else if (capabilityProbeRequired) {
       const inspected = await inspectBrowserLoginCapabilities(config);
       solAvailable = inspected.solAvailable;
+      extraHighAvailable = inspected.extraHighAvailable;
       proAvailable = inspected.proAvailable;
     }
   }
   config.solAvailable = solAvailable === true;
+  config.extraHighAvailable = config.solAvailable && extraHighAvailable === true;
   config.proAvailable = config.solAvailable && proAvailable === true;
   const explicitTunnelChange = Boolean(options.tunnelId || options.runtimeKeyFile || options.runtimeKeyValue);
   const preliminaryChange = Boolean(existing && (meaningfulRuntimeChange(existing, config) || explicitTunnelChange || options.forceLogin));
@@ -484,29 +641,27 @@ export async function setupDevProfile(options: SetupOptions): Promise<DevProfile
   if (!options.browserHostDescriptorPath) {
     throw new Error("DEV profile setup requires the isolated launcher browser descriptor");
   }
-  const config = baseConfig(existing, {
-    ...options,
-    appName: resolveDevSetupConnectorName(existing?.appName, options.appName),
-  });
+  const config = baseConfig(existing, options, DEV_LAUNCHER_PROFILE);
   if (config.browserHost !== "launcher") {
     throw new Error("DEV profile setup requires the desktop launcher browser host");
   }
   config.purpose = DEV_CONFIG_PURPOSE;
-  const capabilities = await inspectLauncherCapabilities(
-    config,
-    existing,
-    options.refreshAccountCapabilities === true,
-    DEV_LAUNCHER_PROFILE,
-  );
-  config.solAvailable = capabilities.solAvailable;
-  config.proAvailable = capabilities.solAvailable && capabilities.proAvailable;
+  if (config.browserInteractionMode === "automatic") {
+    const capabilities = await inspectLauncherCapabilities(
+      config,
+      existing,
+      options.refreshAccountCapabilities === true,
+      DEV_LAUNCHER_PROFILE,
+    );
+    config.solAvailable = capabilities.solAvailable;
+    config.extraHighAvailable = capabilities.solAvailable && capabilities.extraHighAvailable;
+    config.proAvailable = capabilities.solAvailable && capabilities.proAvailable;
+  }
 
   const explicitTunnelChange = Boolean(options.tunnelId || options.runtimeKeyFile || options.runtimeKeyValue);
   await configureTunnel(config, existing, options);
   let tunnelReady: boolean | null = null;
   if (config.mode === "full") {
-    config.tunnel!.alias = DEV_TUNNEL_BASE_NAME;
-    config.tunnel!.profileName = DEV_TUNNEL_BASE_NAME;
     const profilePath = join(config.tunnel!.profileDir, `${config.tunnel!.profileName}.yaml`);
     const needsProfile = !existsSync(profilePath);
     if (needsProfile || tunnelWorkerRuntimeChanged(existing, config) || explicitTunnelChange) {
