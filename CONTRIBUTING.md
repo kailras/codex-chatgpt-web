@@ -1,6 +1,6 @@
 # 기여 안내
 
-Codex Web GPT는 [@miuuyy](https://github.com/miuuyy)가 제작하였으며 주로 유지 관리하고 있습니다. 제품 방향, 핵심 아키텍처 및 릴리스 결정은 제작자에게 있습니다. GitHub에 나열된 다른 기여자는 공유된 제품 또는 아키텍처 소유권보다는 집중적인 외부 수정을 제공했습니다.
+Codex Web GPT는 [@miuuyy](https://github.com/miuuyy)가 원작자이며, 본 저장소([kailras/codex-chatgpt-web](https://github.com/kailras/codex-chatgpt-web))는 Windows 환경 개선(패스키/외부 로그인 확장) 및 한국어 단일화(ko-only)를 목적으로 관리되는 v9.0.0 독자 포크입니다.
 
 외부 기여는 환영하지만, 이는 의도적으로 유지관리자가 주도하는 프로젝트입니다. 풀 리퀘스트는 작고 집중적이며 검토 및 검증이 용이해야 합니다. 좋은 기여로는 격리된 버그 수정, 회귀 테스트, 문서 수정 및 제한적인 플랫폼별 수정이 포함됩니다.
 

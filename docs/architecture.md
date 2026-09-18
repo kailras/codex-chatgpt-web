@@ -52,7 +52,13 @@ ChatGPT 커넥터 이름은 공개 MCP ABI 식별자이기도 합니다. 직접 
 
 브라우저 제출 및 응답 바인딩은 렌더링 중에 변경될 수 있는 `conversation-turn-N` 표시 인덱스가 아니라 ChatGPT의 논리적 `data-turn-id`를 사용합니다. 제출 기준선에는 가상화된 기록의 영구 `data-turn-id-container` 래퍼가 포함됩니다. 따라서 이전 메시지를 다시 마운트해도 새 제출이나 다른 사용자의 턴으로 계산되지 않습니다. 누락되거나 중복된 논리적 식별자는 명시적으로 실패합니다. 수락된 메시지는 DOM을 복구하기 위해 다시 전송되지 않습니다.
 
-로그인은 동일한 영구 Electron 파티션을 사용합니다. ChatGPT 로그인 페이지 및 허용된 ID 프로바이더 팝업은 다른 브라우저로 리디렉션되는 대신 런처 내부의 임시 `WebContentsView`로 수용됩니다. 프로바이더가 ChatGPT로 돌아온 후 런처는 기본 소유 뷰에서 서버 인증 세션과 Temporary Chat 입력창을 모두 요구한 다음 임시 인증 뷰를 닫습니다. 브라우저 프로필 전달, 쿠키 가져오기, CDP 로그인 포트 또는 임시 세션 전송 디렉터리는 없습니다.
+로그인은 기본적으로 동일한 영구 Electron 파티션을 사용합니다. ChatGPT 로그인 페이지 및 허용된 ID 프로바이더 팝업은 다른 브라우저로 리디렉션되는 대신 런처 내부의 임시 `WebContentsView`로 수용됩니다. 프로바이더가 ChatGPT로 돌아온 후 런처는 기본 소유 뷰에서 서버 인증 세션과 Temporary Chat 입력창을 모두 요구한 다음 임시 인증 뷰를 닫습니다.
+
+OS 네이티브 인증(Windows Hello, Touch ID, WebAuthn/Passkey, FIDO2 등)이 필요한 계정을 위해 외부 전용 Chrome 세션 캡처 파이프라인(`captureSystemBrowserLoginToFile`)을 macOS(`darwin`) 및 Windows(`win32`) 환경에 제공합니다:
+- **프로필 격리**: 사용자의 일상 Chrome 프로필(`User Data`)에 접근하지 않고, `mkdtempSync`로 생성된 전용 임시 디렉터리(`login-profile-*`)에서 실행됩니다.
+- **쿠키 살균 및 격리 주입**: 세션 캡처 후 `sanitizeBrowserLoginStorageState`를 거쳐 `chatgpt.com` 및 `openai.com` 도메인 데이터만 선별 추출하여 런처 전용 비공개 프로필(`persist:codex-web-gpt-chatgpt`)로 주입하며, 나머지 IdP 자격 증명은 즉시 폐기됩니다.
+- **프로세스 트리 종료 및 파일 락 방어 (Windows)**: 자식 프로세스(Crashpad, GPU 유틸리티 등)의 파일 핸들 잠금(File Lock)을 방어하기 위해 `taskkill /T /F`로 프로세스 트리 전체를 강제 종료하며, `waitForProfileUnlock` 지수 백오프 및 `safeRmProfileDir` 재시도 파이프라인을 통해 임시 프로필을 안전하게 원자적 파기합니다.
+- **Chrome 설치 경로 자동 탐색**: Windows 환경에서 64-bit Program Files, 32-bit Program Files (x86), LocalAppData 순차 탐색 체인을 적용합니다.
 
 현재 컴파일된 Codex 작업 컨텍스트는 하나의 인라인 JSON envelope으로 삽입됩니다. 이미지 바이트는 JSON 외부에 유지되며 안정적인 참조와 함께 기본적으로 첨부됩니다. 런타임은 컨텍스트 JSONL 파일을 생성하거나, 합성 컨텍스트 문서를 업로드하거나, 프롬프트 해시를 포함하거나, envelope을 자동으로 자르지 않습니다. 턴이 시작되기 전에 첨부 파일 수락 및 전송 준비 상태가 확인됩니다.
 
@@ -97,4 +103,4 @@ Full 모드에서 라우팅된 컴팩션 v1/v2는 정확히 유지된 소스 에
 - 브라우저 턴을 5개의 독립적인 작업 바인딩 탭으로 제한하고 지원되지 않는 모델을 명시적으로 거부합니다. 선택된 라우팅 모델은 어댑터 effort를 고정하며, 충돌하는 요청 effort는 이를 변경할 수 없습니다.
 - 제품 사용 한도를 피하기 위해 재시도하거나 모드를 전환하지 않습니다.
 
-전체 [보안 모델](security-model.ko.md)을 참조하세요.
+전체 [보안 모델](security-model.md)을 참조하세요.
