@@ -296,6 +296,22 @@ test("managed Chrome defaults follow the host platform", () => {
   expect(resolveBrowserConfig(provider).appName).toBe(CHATGPT_CONNECTOR_NAME);
 });
 
+test("default Chrome executable on Windows discovers candidates sequentially", () => {
+  const winEnv = {
+    PROGRAMFILES: "C:\\Program Files",
+    "PROGRAMFILES(X86)": "C:\\Program Files (x86)",
+    LOCALAPPDATA: "C:\\Users\\test\\AppData\\Local",
+  };
+  const primary = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+  const x86 = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
+  const local = "C:\\Users\\test\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe";
+
+  expect(defaultChromeExecutable("win32", "C:\\Program Files", winEnv, p => p === x86)).toBe(x86);
+  expect(defaultChromeExecutable("win32", "C:\\Program Files", winEnv, p => p === local)).toBe(local);
+  expect(defaultChromeExecutable("win32", "C:\\Program Files", winEnv, p => p === primary || p === x86)).toBe(primary);
+  expect(defaultChromeExecutable("win32", "C:\\Program Files", winEnv, () => false)).toBe(primary);
+});
+
 test("browser configuration rejects the retired connector identity before opening a turn", () => {
   expect(() => resolveBrowserConfig({
     adapter: "chatgpt-web",

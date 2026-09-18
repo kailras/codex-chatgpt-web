@@ -147,3 +147,37 @@ test("a storage-state file is not trusted without a verification marker", () => 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("captureSystemBrowserLogin rejects non-supported platforms", async () => {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+  try {
+    await expect(
+      captureSystemBrowserLogin({
+        chromeExecutablePath: "/usr/bin/google-chrome",
+        storageStatePath: "/tmp/storage-state.json",
+      }, {
+        continuation: Promise.resolve(),
+      }),
+    ).rejects.toThrow("Passkey sign-in is currently supported only on macOS and Windows");
+  } finally {
+    Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+  }
+});
+
+test("captureSystemBrowserLogin accepts Windows and reaches Chrome verification", async () => {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+  try {
+    await expect(
+      captureSystemBrowserLogin({
+        chromeExecutablePath: "C:\\nonexistent\\chrome.exe",
+        storageStatePath: "C:\\nonexistent\\storage-state.json",
+      }, {
+        continuation: Promise.resolve(),
+      }),
+    ).rejects.toThrow(/Google Chrome was not found at/);
+  } finally {
+    Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+  }
+});

@@ -1254,8 +1254,67 @@ test("passkey Continue is delivered only to the active owned login child", async
   assert.throws(() => fixture.continuePasskeyLogin(), /No passkey sign-in is waiting/);
 });
 
-test("passkey sign-in is rejected outside macOS even if IPC is invoked directly", () => {
+test("passkey sign-in is rejected outside macOS and Windows even if IPC is invoked directly", () => {
   const fixture = hostFor(null).host;
-  fixture.platform = "win32";
-  assert.throws(() => fixture.passkeyChromeExecutable(), /supported only on macOS/);
+  fixture.platform = "linux";
+  assert.throws(() => fixture.passkeyChromeExecutable(), /supported only on macOS and Windows/);
+});
+
+test("passkey sign-in resolves Chrome executable on Windows", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-chrome-win32-"));
+  const fakeChrome = path.join(root, "chrome.exe");
+  fs.writeFileSync(fakeChrome, "fake-exe");
+  try {
+    const fixture = hostFor({ chromeExecutablePath: fakeChrome }).host;
+    fixture.platform = "win32";
+    assert.equal(fixture.passkeyChromeExecutable(), fakeChrome);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Windows passkey capture uses an isolated launcher-controlled transfer", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-web-gpt-passkey-win32-"));
+  const chrome = path.join(root, "chrome.exe");
+  fs.writeFileSync(chrome, "fake-binary", { mode: 0o700 });
+  const host = new RuntimeHost({
+    app: { getPath: () => root, isPackaged: false },
+    logger: { info() {}, warn() {}, error() {} },
+    sourceRoot: "/source",
+    browserDescriptorPath: path.join(root, "launcher-browser.json"),
+    platform: "win32",
+    supervisor: {
+      readConfig: () => ({ chromeExecutablePath: chrome }),
+      readSetupConfig: () => ({ chromeExecutablePath: chrome }),
+    },
+  });
+  host.launcherControlEnvironment = () => ({ CODEX_WEB_GPT_LAUNCHER_CONTROL_TOKEN: "token" });
+  let invocation;
+  host.run = async (name, args, options) => {
+    invocation = { name, args, options };
+    const statePath = args[args.indexOf("--storage-state") + 1];
+    fs.writeFileSync(statePath, `${JSON.stringify({ cookies: [], origins: [] })}\n`, { mode: 0o600 });
+    fs.writeFileSync(`${statePath}.verified.json`, `${JSON.stringify({
+      version: 1,
+      captureComplete: true,
+      source: "isolated-normal-browser-profile",
+      capturedAt: new Date().toISOString(),
+    })}\n`, { mode: 0o600 });
+    return { code: 0, stdout: "", stderr: "" };
+  };
+  try {
+    const transfer = await host.capturePasskeyLogin();
+    assert.deepEqual(transfer.storageState, { cookies: [], origins: [] });
+    assert.equal(invocation.name, "passkey-login");
+    assert.deepEqual(invocation.args.slice(0, 4), ["login", "--launcher-control", "--chrome", chrome]);
+    assert.equal(invocation.options.embedded, true);
+    assert.equal(invocation.options.controlStdin, true);
+    assert.equal(invocation.options.timeoutMs, 10 * 60_000);
+    const transferRoot = path.dirname(invocation.args[invocation.args.indexOf("--storage-state") + 1]);
+    assert.equal(fs.existsSync(transferRoot), true);
+    await transfer.cleanup();
+    assert.equal(fs.existsSync(transferRoot), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

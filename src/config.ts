@@ -327,12 +327,28 @@ export function assertDurableRuntimeCommand(command: string[]): void {
 export function defaultChromeExecutable(
   platform = process.platform,
   programFiles = process.env.PROGRAMFILES,
+  env: NodeJS.ProcessEnv = process.env,
+  exists: (path: string) => boolean = existsSync,
 ): string {
   if (platform === "darwin") {
     return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   }
   if (platform === "win32") {
-    return win32.join(programFiles || "C:\\Program Files", "Google", "Chrome", "Application", "chrome.exe");
+    const primary = win32.join(programFiles || "C:\\Program Files", "Google", "Chrome", "Application", "chrome.exe");
+    if (programFiles && programFiles !== env.PROGRAMFILES) {
+      return primary;
+    }
+    const programFilesX86 = env["PROGRAMFILES(X86)"];
+    const localAppData = env.LOCALAPPDATA;
+    const candidates = [
+      primary,
+      programFilesX86 ? win32.join(programFilesX86, "Google", "Chrome", "Application", "chrome.exe") : null,
+      localAppData ? win32.join(localAppData, "Google", "Chrome", "Application", "chrome.exe") : null,
+    ].filter((candidate): candidate is string => Boolean(candidate));
+    for (const candidate of candidates) {
+      if (exists(candidate)) return candidate;
+    }
+    return primary;
   }
   return "/usr/bin/google-chrome";
 }

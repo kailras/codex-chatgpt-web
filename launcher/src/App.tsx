@@ -39,7 +39,7 @@ export function App() {
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [logs, setLogs] = useState<LogRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const documentLanguage = snapshot?.state.language ?? "en";
+  const documentLanguage = snapshot?.state.language ?? "ko";
 
   useEffect(() => {
     document.documentElement.lang = documentLanguage;
@@ -101,7 +101,7 @@ export function App() {
   if (!api) return <FatalMessage message="Launcher IPC is unavailable." />;
   if (!snapshot) return <LaunchLoading />;
 
-  const language = snapshot.state.language ?? "en";
+  const language = snapshot.state.language ?? "ko";
   const copy = copyFor(language);
 
   return (
@@ -116,7 +116,6 @@ export function App() {
         {!snapshot.state.onboardingComplete ? (
           <Onboarding
             key="onboarding"
-            language={language}
             setError={setError}
             snapshot={snapshot}
             updateState={updateState}
@@ -143,41 +142,22 @@ export function App() {
 }
 
 function Onboarding({
-  language,
   setError,
   snapshot,
   updateState,
 }: {
-  language: Language;
   setError: (error: string | null) => void;
   snapshot: LauncherSnapshot;
   updateState: (state: LauncherState) => void;
 }) {
-  const [stage, setStage] = useState<"language" | "interaction" | "support">(
-    snapshot.state.language ? "interaction" : "language",
-  );
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
+  const [stage, setStage] = useState<"interaction" | "support">("interaction");
   const [selectedInteractionMode, setSelectedInteractionMode] = useState<BrowserInteractionMode>(
     snapshot.state.browserInteractionMode,
   );
   const [busy, setBusy] = useState(false);
-  const localized = copyFor(selectedLanguage);
-  const isLanguage = stage === "language";
+  const localized = copyFor("ko");
   const isInteraction = stage === "interaction";
-  const stageIndex = isLanguage ? 0 : isInteraction ? 1 : 2;
-
-  const chooseLanguage = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      updateState(await api!.setLanguage(selectedLanguage));
-      setStage("interaction");
-    } catch (cause) {
-      setError(messageOf(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const stageIndex = isInteraction ? 0 : 1;
 
   const openSocial = async (target: "github" | "x") => {
     setBusy(true);
@@ -195,7 +175,7 @@ function Onboarding({
     setBusy(true);
     setError(null);
     try {
-      updateState(await api!.completeOnboarding(selectedLanguage, selectedInteractionMode));
+      updateState(await api!.completeOnboarding("ko", selectedInteractionMode));
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -230,27 +210,10 @@ function Onboarding({
           transition={PANEL_TRANSITION}
         >
           <span className="welcome-kicker">0{stageIndex + 1}</span>
-          <h1>{isLanguage
-            ? localized.chooseLanguage
-            : isInteraction ? localized.interactionMode : localized.supportTitle}</h1>
-          <p>{isLanguage
-            ? localized.chooseLanguageHint
-            : isInteraction ? localized.interactionModeOnboardingBody : localized.supportBody}</p>
+          <h1>{isInteraction ? localized.interactionMode : localized.supportTitle}</h1>
+          <p>{isInteraction ? localized.interactionModeOnboardingBody : localized.supportBody}</p>
 
-          {isLanguage ? (
-            <div className="welcome-options" role="radiogroup" aria-label={localized.chooseLanguage}>
-              {languageOptions.map(option => (
-                <WelcomeOption
-                  key={option.value}
-                  active={selectedLanguage === option.value}
-                  detail={option.label}
-                  label={option.label}
-                  marker={option.marker}
-                  onClick={() => setSelectedLanguage(option.value)}
-                />
-              ))}
-            </div>
-          ) : isInteraction ? (
+          {isInteraction ? (
             <InteractionModePicker
               className="welcome-interaction-mode-picker"
               copy={localized}
@@ -281,18 +244,18 @@ function Onboarding({
 
       <footer className="welcome-footer">
         <div>
-          {!isLanguage ? (
+          {!isInteraction ? (
             <button
               className="text-button"
-              onClick={() => setStage(isInteraction ? "language" : "interaction")}
+              onClick={() => setStage("interaction")}
               type="button"
             >
               {localized.previous}
             </button>
           ) : null}
         </div>
-        <div className="welcome-progress" aria-label={`${stageIndex + 1} / 3`}>
-          {[0, 1, 2].map(index => (
+        <div className="welcome-progress" aria-label={`${stageIndex + 1} / 2`}>
+          {[0, 1].map(index => (
             <span
               className={index < stageIndex ? "is-complete" : index === stageIndex ? "is-active" : ""}
               key={index}
@@ -301,9 +264,7 @@ function Onboarding({
         </div>
         <PrimaryButton
           disabled={busy || (stage === "support" && (!snapshot.state.githubOpened || !snapshot.state.xOpened))}
-          onClick={isLanguage
-            ? chooseLanguage
-            : isInteraction ? () => setStage("support") : finish}
+          onClick={isInteraction ? () => setStage("support") : finish}
         >
           {stage === "support" ? localized.finishWelcome : localized.continue}
         </PrimaryButton>
@@ -818,7 +779,7 @@ function BrowserSurface({
   const visible = browser?.visible === true;
   const manualInteraction = interactionMode === "manual";
   const passkeyAvailable = !manualInteraction
-    && platform === "darwin"
+    && (platform === "darwin" || platform === "win32")
     && browser?.authenticated !== true;
   const selectedManualTab = browser?.tabs.find(tab => tab.active && tab.interactionMode === "manual");
   const navigationLocked = browser?.status === "running" || browser?.status === "testing";
@@ -1587,13 +1548,6 @@ function SettingsSurface({
   const [turnsCancelled, setTurnsCancelled] = useState(false);
   const [integrationRemoved, setIntegrationRemoved] = useState(false);
 
-  const updateLanguage = async (next: Language) => {
-    try {
-      updateState(await api!.setLanguage(next));
-    } catch (cause) {
-      setError(messageOf(cause));
-    }
-  };
   const runDoctor = async () => {
     setBusy(true);
     try {
@@ -1704,9 +1658,6 @@ function SettingsSurface({
               || snapshot.state.coreSetupComplete !== true}
             onChange={(checked) => void setBiggerContext(checked)}
           />
-        </SettingRow>
-        <SettingRow body={copy.chooseLanguageHint} label={copy.language}>
-          <LanguageMenu copy={copy} language={language} onChange={(next) => void updateLanguage(next)} />
         </SettingRow>
       </div>
 
@@ -2279,62 +2230,6 @@ function Switch({
     >
       <span />
     </button>
-  );
-}
-
-const languageOptions = (Object.keys(languages) as Language[]).map(value => ({ value, ...languages[value] }));
-
-function LanguageMenu({ copy, language, onChange }: { copy: Copy; language: Language; onChange: (language: Language) => void }) {
-  const [open, setOpen] = useState(false);
-  const options = languageOptions;
-  const selected = options.find((option) => option.value === language) ?? options[0];
-
-  return (
-    <div
-      className={`language-menu${open ? " is-open" : ""}`}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") setOpen(false);
-      }}
-    >
-      <button
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        className="language-menu-trigger"
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        <span>{selected.label}</span>
-        <Icon name="chevron" />
-      </button>
-      {open ? (
-        <>
-          <button
-            aria-label={`${copy.close}: ${copy.language}`}
-            className="language-menu-scrim"
-            onClick={() => setOpen(false)}
-            type="button"
-          />
-          <div aria-label={copy.language} className="language-menu-panel" role="listbox">
-            {options.map((option) => (
-              <button
-                aria-selected={option.value === language}
-                className={option.value === language ? "is-selected" : ""}
-                key={option.value}
-                onClick={() => {
-                  setOpen(false);
-                  if (option.value !== language) onChange(option.value);
-                }}
-                role="option"
-                type="button"
-              >
-                <span>{option.label}</span>
-                {option.value === language ? <Icon name="check" /> : null}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
-    </div>
   );
 }
 

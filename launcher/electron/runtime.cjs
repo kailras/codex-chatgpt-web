@@ -283,14 +283,30 @@ class RuntimeHost {
   }
 
   passkeyChromeExecutable() {
-    if (this.platform !== "darwin") throw new Error("Passkey sign-in is currently supported only on macOS");
+    if (this.platform !== "darwin" && this.platform !== "win32") {
+      throw new Error("Passkey sign-in is currently supported only on macOS and Windows");
+    }
     const setupConfig = this.supervisor.readSetupConfig
       ? this.supervisor.readSetupConfig()
       : this.supervisor.readConfig();
-    const candidate = setupConfig?.chromeExecutablePath
-      || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    if (!usableExecutable(candidate, this.platform)) {
-      throw new Error(`Google Chrome is unavailable at ${candidate}`);
+    let candidate = setupConfig?.chromeExecutablePath;
+    if (!candidate) {
+      if (this.platform === "darwin") {
+        candidate = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+      } else if (this.platform === "win32") {
+        const programFiles = process.env.PROGRAMFILES || "C:\\Program Files";
+        const programFilesX86 = process.env["PROGRAMFILES(X86)"];
+        const localAppData = process.env.LOCALAPPDATA;
+        const candidates = [
+          path.win32.join(programFiles, "Google", "Chrome", "Application", "chrome.exe"),
+          programFilesX86 ? path.win32.join(programFilesX86, "Google", "Chrome", "Application", "chrome.exe") : null,
+          localAppData ? path.win32.join(localAppData, "Google", "Chrome", "Application", "chrome.exe") : null,
+        ].filter(Boolean);
+        candidate = candidates.find(item => usableExecutable(item, this.platform)) || candidates[0];
+      }
+    }
+    if (!candidate || !usableExecutable(candidate, this.platform)) {
+      throw new Error(`Google Chrome is unavailable at ${candidate || "unknown path"}`);
     }
     return candidate;
   }
@@ -336,7 +352,20 @@ class RuntimeHost {
     try { fs.chmodSync(transferRoot, 0o700); } catch {}
     const storageStatePath = path.join(transferRoot, "storage-state.json");
     const markerPath = `${storageStatePath}.verified.json`;
-    const cleanup = async () => fs.rmSync(transferRoot, { recursive: true, force: true });
+    const cleanup = async () => {
+      const deadline = Date.now() + 3000;
+      while (Date.now() <= deadline) {
+        try {
+          fs.rmSync(transferRoot, { recursive: true, force: true });
+          return;
+        } catch (error) {
+          if (error?.code === "ENOENT") return;
+          if (error?.code !== "EBUSY" && error?.code !== "EPERM" && error?.code !== "ENOTEMPTY") throw error;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      fs.rmSync(transferRoot, { recursive: true, force: true });
+    };
     this.passkeyContinuationRequested = false;
     try {
       await this.run("passkey-login", [

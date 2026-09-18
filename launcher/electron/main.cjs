@@ -270,7 +270,7 @@ const NATIVE_COPY = Object.freeze({
 });
 
 function nativeCopyFor(language) {
-  return NATIVE_COPY[language] || NATIVE_COPY.en;
+  return NATIVE_COPY[language] || NATIVE_COPY.ko;
 }
 
 function updateTrayMenu(language) {
@@ -979,9 +979,12 @@ async function start() {
   await app.whenReady();
 
   const stateStore = createStateStore(path.join(app.getPath("userData"), "launcher-state.json"));
+  if (stateStore.read().language !== "ko") {
+    stateStore.update({ language: "ko" });
+  }
   if (IS_DEV_PROFILE && !stateStore.read().onboardingComplete) {
     stateStore.update({
-      language: stateStore.read().language || "en",
+      language: "ko",
       onboardingComplete: true,
       autoStart: false,
     });
@@ -1316,7 +1319,7 @@ void start().catch(async (error) => {
     await app.whenReady();
     quitting = true;
     showMainWindow();
-    const copy = nativeCopyFor(createStateStore(path.join(app.getPath("userData"), "launcher-state.json")).read().language);
+    const copy = nativeCopyFor(createStateStore(path.join(app.getPath("userData"), "launcher-state.json")).read().language || "ko");
     const options = {
       type: "error",
       title: copy.startupTitle,

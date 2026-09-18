@@ -70,7 +70,12 @@ describe("reversible native Codex route integration", () => {
     const alias = join(codexHome, "config.toml");
     const original = 'model = "gpt-5.6-sol"\n\n[features]\ngoals = true\n';
     writeFileSync(target, original, { mode: 0o640 });
-    symlinkSync(join("..", "shared", "config.toml"), alias);
+    try {
+      symlinkSync(join("..", "shared", "config.toml"), alias);
+    } catch (error: any) {
+      if (error?.code === "EPERM") return;
+      throw error;
+    }
     const link = readlinkSync(alias);
     const linkInode = lstatSync(alias).ino;
     const directoryMode = statSync(shared).mode & 0o777;
@@ -105,7 +110,12 @@ describe("reversible native Codex route integration", () => {
     writeFileSync(target, "original\n", { mode: 0o640 });
     writeFileSync(other, "other\n");
     mkdirSync(directory);
-    symlinkSync(target, alias);
+    try {
+      symlinkSync(target, alias);
+    } catch (error: any) {
+      if (error?.code === "EPERM") return;
+      throw error;
+    }
     const inode = lstatSync(alias).ino;
     const mode = statSync(target).mode & 0o777;
     expect(() => writeFilesWithCompensation(

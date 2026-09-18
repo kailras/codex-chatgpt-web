@@ -1,5 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium, type BrowserContext, type BrowserContextOptions } from "playwright-core";
 import type { AppConfig } from "./config";
@@ -59,9 +59,17 @@ function browserProcessExited(browser: ChildProcess): boolean {
 
 function removeTemporaryChromeTabSessions(profileDir: string): void {
   const defaultProfile = join(profileDir, "Default");
-  rmSync(join(defaultProfile, "Sessions"), { recursive: true, force: true });
+  try {
+    rmSync(join(defaultProfile, "Sessions"), { recursive: true, force: true });
+  } catch (error: any) {
+    if (error?.code !== "ENOENT") throw error;
+  }
   for (const name of ["Current Session", "Current Tabs", "Last Session", "Last Tabs"]) {
-    rmSync(join(defaultProfile, name), { force: true });
+    try {
+      rmSync(join(defaultProfile, name), { force: true });
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") throw error;
+    }
   }
 }
 
@@ -83,8 +91,36 @@ async function waitForBrowserExit(browser: ChildProcess, timeoutMs: number): Pro
   });
 }
 
+function terminateLoginProcessTree(browser: ChildProcess): boolean {
+  if (browserProcessExited(browser)) return true;
+  const pid = browser.pid;
+  if (!Number.isInteger(pid) || pid! < 1) {
+    return browser.kill();
+  }
+  if (process.platform === "win32") {
+    const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || "C:\\Windows";
+    const taskkill = join(systemRoot, "System32", "taskkill.exe");
+    const result = spawnSync(taskkill, ["/PID", String(pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+      timeout: 10_000,
+    });
+    if (result.status === 0 || browserProcessExited(browser)) return true;
+    return browser.kill();
+  }
+  return browser.kill();
+}
+
 async function stopOwnedLoginBrowser(browser: ChildProcess): Promise<void> {
   if (browserProcessExited(browser) || !Number.isInteger(browser.pid)) return;
+  if (process.platform === "win32") {
+    terminateLoginProcessTree(browser);
+    const exited = await waitForBrowserExit(browser, SYSTEM_LOGIN_STOP_TIMEOUT_MS);
+    if (!exited && !browserProcessExited(browser)) {
+      throw new Error("The dedicated Chrome login process did not exit");
+    }
+    return;
+  }
   const graceful = waitForBrowserExit(browser, SYSTEM_LOGIN_STOP_TIMEOUT_MS);
   if (!browser.kill() && !browserProcessExited(browser)) {
     throw new Error("The dedicated Chrome login process refused to close");
@@ -95,6 +131,56 @@ async function stopOwnedLoginBrowser(browser: ChildProcess): Promise<void> {
     throw new Error("The dedicated Chrome login process refused forced termination");
   }
   if (!await forced) throw new Error("The dedicated Chrome login process did not exit");
+}
+
+async function waitForProfileUnlock(profileDir: string, maxWaitMs = 3000): Promise<void> {
+  if (process.platform !== "win32") return;
+  const deadline = Date.now() + maxWaitMs;
+  let delayMs = 50;
+  const candidateFiles = [
+    join(profileDir, "Default", "Network", "Cookies"),
+    join(profileDir, "Default", "Preferences"),
+    join(profileDir, "Local State"),
+  ];
+  while (Date.now() <= deadline) {
+    let allUnlocked = true;
+    for (const filePath of candidateFiles) {
+      if (!existsSync(filePath)) continue;
+      try {
+        const fd = openSync(filePath, "r+");
+        closeSync(fd);
+      } catch (error: any) {
+        if (error?.code === "EBUSY" || error?.code === "EPERM") {
+          allUnlocked = false;
+          break;
+        }
+      }
+    }
+    if (allUnlocked) return;
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    delayMs = Math.min(delayMs * 2, 400);
+  }
+}
+
+async function safeRmProfileDir(profileDir: string, maxWaitMs = 3000): Promise<void> {
+  const deadline = Date.now() + maxWaitMs;
+  let delayMs = 50;
+  let lastError: unknown;
+  while (Date.now() <= deadline) {
+    try {
+      rmSync(profileDir, { recursive: true, force: true });
+      return;
+    } catch (error: any) {
+      if (error?.code === "ENOENT") return;
+      if (error?.code !== "EBUSY" && error?.code !== "EPERM" && error?.code !== "ENOTEMPTY") {
+        throw error;
+      }
+      lastError = error;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 2, 400);
+    }
+  }
+  if (lastError) throw lastError;
 }
 
 function allowedLoginStorageHost(rawHostname: string): boolean {
@@ -206,8 +292,8 @@ export async function captureSystemBrowserLogin(
   config: Pick<AppConfig, "chromeExecutablePath" | "storageStatePath">,
   options: SystemBrowserLoginOptions,
 ): Promise<SystemBrowserLoginCapture> {
-  if (process.platform !== "darwin") {
-    throw new Error("Passkey sign-in is currently supported only on macOS");
+  if (process.platform !== "darwin" && process.platform !== "win32") {
+    throw new Error("Passkey sign-in is currently supported only on macOS and Windows");
   }
   if (!existsSync(config.chromeExecutablePath)) {
     throw new Error(`Google Chrome was not found at ${config.chromeExecutablePath}`);
@@ -251,7 +337,10 @@ export async function captureSystemBrowserLogin(
         timeout = setTimeout(() => reject(new Error("Timed out waiting for passkey sign-in")), remainingTime());
         void options.continuation.then(() => {
           continuationRequested = true;
-          if (!loginBrowser.kill() && !browserProcessExited(loginBrowser)) {
+          const terminated = process.platform === "win32"
+            ? terminateLoginProcessTree(loginBrowser)
+            : loginBrowser.kill();
+          if (!terminated && !browserProcessExited(loginBrowser)) {
             reject(new Error("The dedicated Chrome login process refused the Continue request"));
           }
         }, reject);
@@ -280,6 +369,7 @@ export async function captureSystemBrowserLogin(
     // session-only cookies after a normal restart unless session restore is requested. Remove only
     // the disposable profile's tab-session files first, so restoring cookies cannot reopen the
     // authenticated or identity-provider pages during the offline capture.
+    await waitForProfileUnlock(profileDir);
     removeTemporaryChromeTabSessions(profileDir);
     context = await chromium.launchPersistentContext(profileDir, {
       executablePath: config.chromeExecutablePath,
@@ -340,7 +430,7 @@ export async function captureSystemBrowserLogin(
     cleanupError = error;
   }
   try {
-    rmSync(profileDir, { recursive: true, force: true });
+    await safeRmProfileDir(profileDir);
   } catch (error) {
     cleanupError ??= error;
   }
@@ -434,7 +524,7 @@ export async function loginToChatGpt(
     };
   } finally {
     await context.close();
-    if (browserLoginStateExists(config)) rmSync(profileDir, { recursive: true, force: true });
+    if (browserLoginStateExists(config)) await safeRmProfileDir(profileDir);
   }
 }
 

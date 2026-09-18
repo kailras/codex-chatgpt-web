@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { defaultBrokerEndpoint, defaultConfig, ZERO_RISK_CHATGPT_CONNECTOR_NAME } from "../src/config";
-import { LAUNCHER_BROWSER_IDLE_URL } from "../src/launcher-browser-host";
+import { LAUNCHER_BROWSER_HOST_KIND, LAUNCHER_BROWSER_IDLE_URL } from "../src/launcher-browser-host";
 
 setDefaultTimeout(30_000);
 
@@ -170,6 +170,52 @@ test("passkey capture cannot be invoked outside the live Launcher control channe
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Launcher-controlled passkey login requires a live launcher authorization");
     expect(existsSync(join(root, "storage-state.json"))).toBe(false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("authorized passkey capture validates platform and requires chrome and storage state", async () => {
+  if (process.platform !== "win32") return;
+  const root = mkdtempSync(join(tmpdir(), "codex-chatgpt-web-cli-passkey-test-"));
+  const token = "launcher-control-token-0123456789abcdefghijklmnop";
+  const descriptorPath = join(root, "descriptor.json");
+  writeFileSync(descriptorPath, `${JSON.stringify({
+    version: 3,
+    kind: LAUNCHER_BROWSER_HOST_KIND,
+    profile: "production",
+    pid: process.pid,
+    endpoint: "http://127.0.0.1:40000",
+    control: {
+      endpoint: "http://127.0.0.1:40001",
+      token,
+    },
+    helper: {
+      executable: process.execPath,
+      script: import.meta.path,
+    },
+    partition: "persist:codex-web-gpt-chatgpt",
+    idleUrl: LAUNCHER_BROWSER_IDLE_URL,
+    surfaceId: "launcher_surface_id_0123456789AB",
+    surfaceTargets: { ["launcher_surface_id_0123456789AB"]: "native-owned-target" },
+    createdAt: new Date().toISOString(),
+  })}\n`);
+  try {
+    const result = await runCli([
+      "login",
+      "--launcher-control",
+      "--chrome",
+      "C:\\nonexistent\\chrome.exe",
+      "--storage-state",
+      join(root, "storage-state.json"),
+    ], {
+      ...process.env,
+      CODEX_CHATGPT_WEB_BROWSER_HOST_DESCRIPTOR: descriptorPath,
+      CODEX_WEB_GPT_LAUNCHER_CONTROL_TOKEN: token,
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).not.toContain("Passkey sign-in is currently supported only on");
+    expect(result.stderr).toContain("Google Chrome was not found at");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
